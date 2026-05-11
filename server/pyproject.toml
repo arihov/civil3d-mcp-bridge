@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "civil3d-mcp"
+version = "0.2.0"
+description = "MCP server bridging Claude to Autodesk Civil 3D via an in-process C# add-in"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "SANS LIMITE Consults Ltd" }]
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "aiohttp>=3.9",
+]
+
+[project.scripts]
+civil3d-mcp = "civil3d_mcp.server:main"
+civil3d-mcp-mock = "civil3d_mcp.tests.mock_bridge:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/civil3d_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>false</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>Civil3DMcpBridge</RootNamespace>
+    <AssemblyName>Civil3DMcpBridge</AssemblyName>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Version>0.2.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Civil3DPath Condition="'$(Civil3DPath)' == ''">C:\Program Files\Autodesk\AutoCAD 2026</Civil3DPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="AcCoreMgd">
+      <HintPath>$(Civil3DPath)\AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcDbMgd">
+      <HintPath>$(Civil3DPath)\AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AcMgd">
+      <HintPath>$(Civil3DPath)\AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AecBaseMgd">
+      <HintPath>$(Civil3DPath)\ACA\AecBaseMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AeccDbMgd">
+      <HintPath>$(Civil3DPath)\C3D\AeccDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AeccPressurePipesMgd">
+      <HintPath>$(Civil3DPath)\C3D\AeccPressurePipesMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="PackageContents.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
