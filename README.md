@@ -184,7 +184,9 @@ civil3d-mcp/
 
 ## License & support
 
-Internal SANS LIMITE / personal use. No warranty. The bridge runs only
+Authored by **Engineer Venture Kubariho**, a current student undertaking a
+Master's in Transport Planning and Engineering at Edinburgh Napier University,
+Scotland. Personal / internal use. No warranty. The bridge runs only
 on `127.0.0.1` and does **not** listen on any external interface.
 
 If a tool call fails, check:

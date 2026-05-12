@@ -5,12 +5,12 @@
                     Name="Civil3DMcpBridge"
                     Description="Bridges Claude (MCP) to Civil 3D over HTTP"
                     AppVersion="0.2.0"
-                    Author="SANS LIMITE Consults Ltd"
+                    Author="Venture Kubariho"
                     ProductCode="{C3DA0000-0000-0000-0000-000000000001}"
                     UpgradeCode="{C3DA0000-0000-0000-0000-000000000002}">
-  <CompanyDetails Name="SANS LIMITE Consults Ltd"
+  <CompanyDetails Name="Venture Kubariho"
                   Url="https://example.com"
-                  Email="dev@example.com" />
+                  Email="venture.kubariho@napier.ac.uk" />
   <Components Description="Bridge components for Civil 3D 2025/2026">
     <RuntimeRequirements OS="Win64"
                          Platform="AutoCAD*"
