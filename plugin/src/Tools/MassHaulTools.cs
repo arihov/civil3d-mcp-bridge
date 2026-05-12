@@ -39,12 +39,19 @@ internal static class MassHaulTools
     /// </summary>
     private static object ComputeQuantityTakeoff(JsonElement args)
     {
-        // The Section/SampleLine quantity workflow in C3D 2026 requires the
-        // GetSectionSources/GetMaterialSectionSources path on
-        // SampleLineGroup and reads geometry off SectionPoint.Location
-        // (world point) instead of the older SampleSectionPoints/Offset
-        // pair. Stub until the new shape is properly modelled.
-        throw new ToolException("compute_quantity_takeoff not yet ported to C3D 2026");
+        // Quantity takeoff between two surfaces along a sample line group
+        // requires reading the per-station Section geometry, which in C3D
+        // 2026 is exposed only through SampleLineGroup.GetSectionSources()
+        // and SectionPoint.Location (no Offset/ElevationAt accessors). A
+        // faithful port needs adapter logic that's out of scope for the
+        // bridge core. For total cut/fill between two surfaces use
+        // civil3d_get_surface_volume — it returns net cut/fill/balanced
+        // earthworks numbers that match Civil 3D's UI takeoff for the
+        // common case where you don't need the per-station breakdown.
+        throw new ToolException(
+            "compute_quantity_takeoff: per-station QTO needs Civil 3D's UI " +
+            "Material List + Quantity Report for now. For total volumes " +
+            "between two surfaces, use civil3d_get_surface_volume.");
     }
 
     /// <summary>

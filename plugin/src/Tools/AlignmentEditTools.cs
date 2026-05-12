@@ -34,13 +34,69 @@ internal static class AlignmentEditTools
     /// </summary>
     private static object CreateFromPolyline(JsonElement args)
     {
-        // The Alignment.Create overloads in C3D 2026 no longer accept the
-        // (civDoc, ObjectIdCollection, name, siteId, layer, styleId,
-        // labelSetId, erase) signature this method previously used. The
-        // replacement signatures need to be verified against the live API
-        // before re-enabling. Until then, surface a clean error rather than
-        // silently misbehaving.
-        throw new ToolException("create_alignment_from_polyline not ported to C3D 2026 API");
+        var name = args.GetRequiredString("name");
+        var polyHandleStr = args.GetRequiredString("polyline_handle");
+        var siteName = args.GetOptionalString("site");
+        var styleName = args.GetOptionalString("alignment_style");
+        var labelSetName = args.GetOptionalString("label_set_style");
+        var addCurves = args.GetOptionalBool("add_curves_between_tangents", true);
+        var erasePolyline = args.GetOptionalBool("erase_polyline", false);
+
+        var (doc, civDoc) = DrawingContext.RequireActive();
+        using var docLock = doc.LockDocument();
+        using var tr = doc.Database.TransactionManager.StartTransaction();
+
+        if (!long.TryParse(polyHandleStr, System.Globalization.NumberStyles.HexNumber,
+                System.Globalization.CultureInfo.InvariantCulture, out var handleVal))
+            throw new ToolException($"invalid polyline_handle '{polyHandleStr}' — expected hex string");
+        var polyId = doc.Database.GetObjectId(false, new Handle(handleVal), 0);
+        if (polyId.IsNull)
+            throw new ToolException($"no entity with handle '{polyHandleStr}' in this drawing");
+
+        var siteId = ResolveSiteId(tr, civDoc, siteName);
+        var styleId = ResolveStyleId(tr, civDoc.Styles.AlignmentStyles, styleName);
+        var labelSetId = ResolveStyleId(tr, civDoc.Styles.LabelSetStyles.AlignmentLabelSetStyles, labelSetName);
+        var layerId = ObjectId.Null; // null = use current layer
+
+        var options = new PolylineOptions
+        {
+            PlineId = polyId,
+            AddCurvesBetweenTangents = addCurves,
+            EraseExistingEntities = erasePolyline,
+        };
+
+        var alId = Alignment.Create(civDoc, options, name, siteId, layerId, styleId, labelSetId);
+        var al = (Alignment)tr.GetObject(alId, OpenMode.ForRead);
+
+        var result = new
+        {
+            name = al.Name,
+            site = string.IsNullOrEmpty(siteName) ? "<none>" : siteName,
+            length = al.Length,
+            startStation = al.StartingStation,
+            endStation = al.EndingStation,
+            entityCount = al.Entities.Count,
+            handle = al.Handle.Value.ToString("x"),
+        };
+        tr.Commit();
+        return result;
+    }
+
+    private static ObjectId ResolveSiteId(Transaction tr,
+        Autodesk.Civil.ApplicationServices.CivilDocument civDoc, string? name)
+    {
+        if (string.IsNullOrEmpty(name) ||
+            string.Equals(name, "<none>", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "none", StringComparison.OrdinalIgnoreCase))
+            return ObjectId.Null;
+        foreach (ObjectId sid in civDoc.GetSiteIds())
+        {
+            var site = tr.GetObject(sid, OpenMode.ForRead);
+            var prop = site.GetType().GetProperty("Name");
+            if (string.Equals(prop?.GetValue(site) as string, name, StringComparison.OrdinalIgnoreCase))
+                return sid;
+        }
+        throw new ToolException($"site '{name}' not found (use \"<none>\" for siteless)");
     }
 
     /// <summary>

@@ -138,10 +138,43 @@ internal static class ProfileTools
 
     private static object AddVerticalCurve(JsonElement args)
     {
-        // ProfileEntityCollection.AddFixedParabolaByLength does not exist in
-        // C3D 2026 — the symmetric/asymmetric parabola factories take
-        // different parameters. Stub until the new API is mapped.
-        throw new ToolException("add_vertical_curve not ported to C3D 2026 API");
+        var alignmentName = args.GetRequiredString("alignment");
+        var profileName = args.GetRequiredString("profile");
+        var pviStation = args.GetRequiredDouble("pvi_station");
+        var length = args.GetRequiredDouble("length");
+        var tol = args.GetOptionalDouble("search_tolerance", 0.5);
+        if (length <= 0) throw new ToolException("'length' must be positive");
+
+        var (doc, civDoc) = DrawingContext.RequireActive();
+        using var docLock = doc.LockDocument();
+        using var tr = doc.Database.TransactionManager.StartTransaction();
+
+        var pRead = FindProfile(tr, civDoc, alignmentName, profileName);
+        var profile = (Profile)tr.GetObject(pRead.ObjectId, OpenMode.ForWrite);
+
+        ProfilePVI? targetPvi = null;
+        double bestDelta = double.MaxValue;
+        foreach (ProfilePVI pvi in profile.PVIs)
+        {
+            var d = Math.Abs(pvi.Station - pviStation);
+            if (d <= tol && d < bestDelta) { targetPvi = pvi; bestDelta = d; }
+        }
+        if (targetPvi is null)
+            throw new ToolException(
+                $"no PVI found within {tol} of station {pviStation:F3} on profile '{profileName}'");
+
+        var newCurve = profile.Entities.AddFreeSymmetricParabolaByPVIAndCurveLength(targetPvi, length);
+        tr.Commit();
+
+        return new
+        {
+            alignment = alignmentName,
+            profile = profileName,
+            pviStation = targetPvi.Station,
+            elevation = targetPvi.Elevation,
+            length,
+            curveType = newCurve.CurveType.ToString(),
+        };
     }
 
 

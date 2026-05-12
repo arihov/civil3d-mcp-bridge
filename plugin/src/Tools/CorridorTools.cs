@@ -361,10 +361,63 @@ internal static class CorridorTools
     /// </summary>
     private static object ExportCorridorSections(JsonElement args)
     {
-        // Baseline.CalculatedStationList does not exist in C3D 2026; the
-        // replacement API (AppliedAssembly / GetAppliedAssemblyAtStation)
-        // exposes calculated points per station but has a different shape.
-        // Stub until that path is mapped.
-        throw new ToolException("export_corridor_sections not ported to C3D 2026 API");
+        var corridorName = args.GetRequiredString("corridor");
+        var outputPath = args.GetRequiredString("output_path");
+        var baselineFilter = args.GetOptionalInt("baseline_index", -1);
+
+        var (doc, civDoc) = DrawingContext.RequireActive();
+        var resolvedPath = Helpers.ResolvePath(doc, outputPath);
+        using var docLock = doc.LockDocument();
+        using var tr = doc.Database.TransactionManager.StartTransaction();
+
+        var corridorId = Helpers.FindCorridorId(tr, civDoc, corridorName)
+            ?? throw new ToolException($"corridor '{corridorName}' not found");
+        var corridor = (Corridor)tr.GetObject(corridorId, OpenMode.ForRead);
+
+        var dir = System.IO.Path.GetDirectoryName(resolvedPath);
+        if (!string.IsNullOrEmpty(dir)) System.IO.Directory.CreateDirectory(dir);
+        using var writer = new System.IO.StreamWriter(resolvedPath, false,
+            new System.Text.UTF8Encoding(false));
+        writer.WriteLine("baseline,station,point_codes,offset,elevation,easting,northing");
+
+        int rowCount = 0;
+        for (var bi = 0; bi < corridor.Baselines.Count; bi++)
+        {
+            if (baselineFilter >= 0 && bi != baselineFilter) continue;
+            var bl = corridor.Baselines[bi];
+            var stations = bl.SortedStations();
+            foreach (double station in stations)
+            {
+                AppliedAssembly? aa = null;
+                try { aa = bl.GetAppliedAssemblyAtStation(station); } catch { continue; }
+                if (aa is null) continue;
+                foreach (var cp in aa.GetPointsByCode(""))
+                {
+                    var codes = cp.CorridorCodes != null && cp.CorridorCodes.Count > 0
+                        ? string.Join("|", cp.CorridorCodes)
+                        : "";
+                    var sob = cp.StationOffsetElevationToBaseline;
+                    writer.WriteLine(string.Join(",", new[]
+                    {
+                        bl.Name,
+                        station.ToString("F4", System.Globalization.CultureInfo.InvariantCulture),
+                        codes,
+                        sob.Y.ToString("F4", System.Globalization.CultureInfo.InvariantCulture),
+                        cp.XYZ.Z.ToString("F4", System.Globalization.CultureInfo.InvariantCulture),
+                        cp.XYZ.X.ToString("F4", System.Globalization.CultureInfo.InvariantCulture),
+                        cp.XYZ.Y.ToString("F4", System.Globalization.CultureInfo.InvariantCulture),
+                    }));
+                    rowCount++;
+                }
+            }
+        }
+        tr.Commit();
+        return new
+        {
+            corridor = corridorName,
+            outputPath = resolvedPath,
+            rowsWritten = rowCount,
+            baselineFilter = baselineFilter < 0 ? "all" : baselineFilter.ToString(),
+        };
     }
 }
