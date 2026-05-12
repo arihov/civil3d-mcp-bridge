@@ -124,18 +124,25 @@ internal sealed class BridgeServer
         }
 
         var args = req.Args ?? JsonDocument.Parse("{}").RootElement;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
             var result = await _dispatcher.RunOnMainThreadAsync(() => handler!(args)).ConfigureAwait(false);
+            sw.Stop();
+            InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, true, null);
             await WriteJsonAsync(ctx, 200, new { ok = true, result });
         }
         catch (ToolException tex)
         {
+            sw.Stop();
+            InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, tex.Message);
             await WriteJsonAsync(ctx, 400, new { ok = false, error = tex.Message });
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, $"{ex.GetType().Name}: {ex.Message}");
             await WriteJsonAsync(ctx, 500, new { ok = false, error = $"{ex.GetType().Name}: {ex.Message}" });
         }
     }

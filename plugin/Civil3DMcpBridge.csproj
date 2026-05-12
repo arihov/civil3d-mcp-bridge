@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWindowsForms>false</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Civil3DMcpBridge</RootNamespace>
     <AssemblyName>Civil3DMcpBridge</AssemblyName>
@@ -32,6 +33,10 @@
     </Reference>
     <Reference Include="AecBaseMgd">
       <HintPath>$(Civil3DPath)\ACA\AecBaseMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>$(Civil3DPath)\AdWindows.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
