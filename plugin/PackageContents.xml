@@ -5,10 +5,10 @@
                     Name="Civil3DMcpBridge"
                     Description="Bridges Claude (MCP) to Civil 3D over HTTP"
                     AppVersion="0.2.0"
-                    Author="SANS LIMITE Consults Ltd"
+                    Author="Engineer Venture Kubariho (MSc Transport Planning and Engineering, Edinburgh Napier University, Scotland)"
                     ProductCode="{C3DA0000-0000-0000-0000-000000000001}"
                     UpgradeCode="{C3DA0000-0000-0000-0000-000000000002}">
-  <CompanyDetails Name="SANS LIMITE Consults Ltd"
+  <CompanyDetails Name="Engineer Venture Kubariho — MSc Transport Planning and Engineering, Edinburgh Napier University, Scotland"
                   Url="https://example.com"
                   Email="dev@example.com" />
   <Components Description="Bridge components for Civil 3D 2025/2026">
