@@ -10,7 +10,7 @@ namespace Civil3DMcpBridge.UI;
 internal static class McpPalette
 {
     // GUID is persisted by AutoCAD across sessions for dock position memory.
-    private static readonly Guid PaletteGuid = new("2c8d4a6f-4f4f-4f4f-9aaa-c1v1l3dmcp001");
+    private static readonly Guid PaletteGuid = new("2c8d4a6f-4f4f-4f4f-9aaa-c1f13d3c0001");
 
     private static PaletteSet? _set;
     private static McpPaletteControl? _control;
