@@ -24,5 +24,4 @@ Thumbs.db
 .DS_Store
 
 # Generated / scratch
-docs/USER_MANUAL.pdf
 *.bak
