@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "civil3d-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server bridging Claude to Autodesk Civil 3D via an in-process C# add-in"
 readme = "README.md"
 requires-python = ">=3.11"

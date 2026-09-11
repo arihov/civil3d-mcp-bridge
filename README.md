@@ -5,8 +5,11 @@ API to Claude (or any MCP client). Talk to Civil 3D in natural language — driv
 alignments, profiles, corridors, surfaces, points, pipe networks, blocks,
 road markings, mass haul and drawing utilities.
 
-> **Status**: 0.2.0 — 66 tools across 14 domains. Built for personal /
-> consultancy use on Windows with Civil 3D 2025 or 2026.
+> **Status**: 0.3.0 — 74 tools across 18 domains. Built for personal /
+> consultancy use on Windows with Civil 3D 2025 or 2026. New in 0.3.0:
+> junction corner-fillet layout, a roundabout centreline builder,
+> swept-path / turning-path vehicle-tracking proxies, and
+> design / profile / quantity / inventory reports.
 
 ---
 
@@ -62,14 +65,14 @@ Then:
 1. Start Civil 3D and open any DWG.
 2. At the command line, type `MCPSTATUS` — should show
    `listening on http://127.0.0.1:7800`.
-3. Restart Claude Desktop. The hammer icon should now list ~66 `civil3d_*`
+3. Restart Claude Desktop. The hammer icon should now list ~74 `civil3d_*`
    tools.
 
 See [`docs/INSTALL.md`](docs/INSTALL.md) for manual install + troubleshooting.
 
 ---
 
-## Tool inventory (66)
+## Tool inventory (74)
 
 | Domain | Tools |
 |--------|-------|
@@ -84,6 +87,10 @@ See [`docs/INSTALL.md`](docs/INSTALL.md) for manual install + troubleshooting.
 | **Blocks** (5) | `list_blocks`, `insert_block_at_chainage`, `insert_blocks_batch`, **`create_signpost_at_chainage`** ⭐, **`create_km_post_series`** ⭐ |
 | **Road markings** (2) | `draw_lane_marking`, `draw_pedestrian_crossing` |
 | **Mass haul** (2) | `compute_quantity_takeoff`, `export_mass_haul_csv` |
+| **Junctions** (1) ⭐ | **`create_junction_corner_fillets`** (4 tangent fillet arcs + approach kerbs + optional channelising island) |
+| **Roundabouts** (1) ⭐ | **`create_roundabout_centerline`** (closed circular alignment + inner/outer kerb offsets) |
+| **Vehicle tracking** (2) ⭐ | **`swept_path_envelope`** (inner/outer swept polylines), **`create_turning_path_arc`** (single-arc template alignment) |
+| **Reports** (4) ⭐ | **`profile_design_report`**, **`alignment_overview_report`**, **`drawing_inventory_report`**, **`quantity_report`** (Python-side, markdown / json / csv) |
 | **Drawing utils** (8) | `get_drawing_info`, `save_drawing`, `zoom_to_alignment`, `zoom_extents`, `list_layers`, `create_layer`, `set_current_layer`, `run_command` |
 
 Full per-tool reference: [`docs/TOOLS.md`](docs/TOOLS.md).

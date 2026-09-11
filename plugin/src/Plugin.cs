@@ -37,6 +37,9 @@ public sealed class Plugin : IExtensionApplication
         Tools.MarkingTools.Register();
         Tools.MassHaulTools.Register();
         Tools.DrawingTools.Register();
+        Tools.JunctionTools.Register();
+        Tools.RoundaboutTools.Register();
+        Tools.TrackingTools.Register();
 
         try { StartBridge(DefaultPort); }
         catch (System.Exception ex)

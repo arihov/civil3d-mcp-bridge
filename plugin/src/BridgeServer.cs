@@ -68,7 +68,7 @@ internal sealed class BridgeServer
                 await WriteJsonAsync(ctx, 200, new
                 {
                     ok = true,
-                    version = "0.2.0",
+                    version = "0.3.0",
                     toolCount = ToolRegistry.Count,
                     tools = ToolRegistry.Names,
                 });

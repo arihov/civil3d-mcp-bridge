@@ -153,6 +153,44 @@ schema. Below is the operational summary.
 
 ---
 
+## Junctions (1)
+
+| Tool | R/W | Purpose |
+|------|-----|---------|
+| `civil3d_create_junction_corner_fillets` | W | Right-angle junction layout at an X-crossing: computes the four tangent corner fillet arcs (radius = kerb return radius) where the approach kerb lines meet, draws the approach kerb polylines, and optionally adds a central island circle. Auto-creates the `C-ROAD-JCT` layer. |
+
+---
+
+## Roundabouts (1)
+
+| Tool | R/W | Purpose |
+|------|-----|---------|
+| `civil3d_create_roundabout_centerline` | W | Builds an exact circular centreline (closed bulged polyline) at a given centre + inscribed radius and converts it into a Civil 3D alignment. Optionally adds IN and OUT kerb offset alignments at ±lane_width/2. Auto-creates the `C-ROAD-RDB` layer. |
+
+---
+
+## Vehicle tracking (2)
+
+| Tool | R/W | Purpose |
+|------|-----|---------|
+| `civil3d_swept_path_envelope` | W | Samples an alignment between two stations and draws the swept-path envelope as two side polylines at ±offset (e.g. offtracking for a design vehicle). Read-only geometry output onto `C-ROAD-TRACK`. |
+| `civil3d_create_turning_path_arc` | W | Draws a fillet/turning path as a sampled arc polyline (≤5° per vertex) and creates a circular or arc alignment from it — useful for truck turning templates. |
+
+---
+
+## Reports (4)
+
+Python-only composition tools — they call existing read tools and format the result; they never write to the drawing.
+
+| Tool | R/W | Purpose |
+|------|-----|---------|
+| `civil3d_profile_design_report` | R | Vertical-profile design summary from a named alignment's profile: PVI/element tables (station, elevation, grade, curve length, K-value) plus stats (max abs grade, min curve length, critical length). `format`: `markdown` (default), `json`, or `csv`. |
+| `civil3d_alignment_overview_report` | R | Horizontal-alignment overview: start/end stations, length, design-speed segments, curve/spiral counts, and a station-range element table. `format`: `markdown` / `json` / `csv`. |
+| `civil3d_drawing_inventory_report` | R | Whole-drawing inventory aggregating alignments, surfaces, corridors, and pipe networks with counts and key properties per object. `format`: `markdown` / `json` / `csv`. |
+| `civil3d_quantity_report` | R | Cut / fill / net volumes between two surfaces (or a volume offset surface) via `get_surface_volume`, formatted as a quantity table. `format`: `markdown` / `json` / `csv`. |
+
+---
+
 ## Argument conventions
 
 * **Stations** are in drawing units (metres in Uganda's case).

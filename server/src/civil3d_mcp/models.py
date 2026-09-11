@@ -417,3 +417,77 @@ class RunCommand(_Strict):
 class GenericCall(_Strict):
     tool: str = Field(..., min_length=1, max_length=200)
     args: dict[str, Any] = Field(default_factory=dict)
+
+
+# ─── Junctions / intersections ─────────────────────────────────────────────
+
+class JunctionFillets(_Strict):
+    center_x: float
+    center_y: float
+    bearing_deg: float = Field(default=0.0)
+    half_width_a: float = Field(..., gt=0)
+    half_width_b: float = Field(..., gt=0)
+    corner_radius: float = Field(..., gt=0)
+    draw_approach_lines: bool = True
+    approach_length: float = Field(default=15.0, gt=0)
+    island: bool = False
+    layer: Optional[str] = Field(default=None, max_length=255)
+    color_aci: int = Field(default=7, ge=1, le=255)
+
+
+# ─── Roundabouts ───────────────────────────────────────────────────────────
+
+class RoundaboutCenterline(_Strict):
+    center_x: float
+    center_y: float
+    radius: float = Field(..., gt=0)
+    name: str = Field(..., min_length=1, max_length=200)
+    lane_width: float = Field(default=0.0, ge=0)
+    create_offsets: bool = True
+    description: Optional[str] = None
+
+
+# ─── Vehicle tracking (proxies) ────────────────────────────────────────────
+
+class SweptEnvelope(_Strict):
+    alignment: str = Field(..., min_length=1, max_length=200)
+    start_station: float
+    end_station: float
+    left_offset: float
+    right_offset: float
+    step: float = Field(default=0.5, gt=0)
+    layer: Optional[str] = Field(default=None, max_length=255)
+    color_aci: int = Field(default=2, ge=1, le=255)
+
+
+class TurningPathArc(_Strict):
+    center_x: float
+    center_y: float
+    radius: float = Field(..., gt=0)
+    start_angle_deg: float
+    end_angle_deg: float
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+
+
+# ─── Reports (Python-side composition over read tools) ─────────────────────
+
+class ProfileReport(_Strict):
+    alignment: str = Field(..., min_length=1, max_length=200)
+    profile: str = Field(..., min_length=1, max_length=200)
+    format: Literal["json", "markdown", "csv"] = "markdown"
+
+
+class AlignmentReport(_Strict):
+    alignment: str = Field(..., min_length=1, max_length=200)
+    format: Literal["json", "markdown"] = "markdown"
+
+
+class InventoryReport(_Strict):
+    format: Literal["json", "markdown"] = "markdown"
+
+
+class QuantityReport(_Strict):
+    base: str = Field(..., min_length=1, max_length=200)
+    comparison: str = Field(..., min_length=1, max_length=200)
+    format: Literal["json", "markdown"] = "markdown"
