@@ -1,204 +1,124 @@
 # civil3d-mcp
 
-A Model Context Protocol bridge that exposes the Autodesk **Civil 3D 2025/2026** .NET
-API to Claude (or any MCP client). Talk to Civil 3D in natural language — drive
-alignments, profiles, corridors, surfaces, points, pipe networks, blocks,
-road markings, mass haul and drawing utilities.
+A Model Context Protocol bridge that exposes the Autodesk **Civil 3D 2025 / 2026 / 2027**
+.NET API to Claude (or any MCP client). Drive alignments, profiles, corridors,
+surfaces, earthworks, sections, feature lines, points, pipe and pressure networks,
+styles, road markings and drawing utilities in natural language, and check designs
+against AASHTO criteria.
 
-> **Status**: 0.3.0 — 74 tools across 18 domains. Built for personal /
-> consultancy use on Windows with Civil 3D 2025 or 2026. New in 0.3.0:
-> junction corner-fillet layout, a roundabout centreline builder,
-> swept-path / turning-path vehicle-tracking proxies, and
-> design / profile / quantity / inventory reports.
+> **Status: 0.4.0** - 128 MCP tools (110 bridge tools + 18 Python-side tools).
+> One bundle serves Civil 3D 2025 (.NET 8), 2026 (.NET 8) and **2027 (.NET 10)**,
+> and several Civil 3D sessions can run side by side. See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────┐   stdio    ┌──────────────────────┐   HTTP   ┌──────────────────────┐
-│  Claude Desktop  │ ◄──────►  │  Python FastMCP      │ ◄──────► │  C# in-process       │
-│  (or any MCP     │            │  (civil3d_mcp)       │          │  bridge in Civil 3D  │
-│   client)        │            │  console script:     │          │  Civil3DMcpBridge.dll│
-└──────────────────┘            │  civil3d-mcp         │          │  127.0.0.1:7800      │
-                                └──────────────────────┘          └──────────┬───────────┘
-                                                                             │
-                                                                  ┌──────────▼───────────┐
-                                                                  │  Civil 3D .NET API   │
-                                                                  │  (AeccDb, AcDb, …)   │
-                                                                  └──────────────────────┘
+┌──────────────────┐   stdio   ┌──────────────────────┐   HTTP (127.0.0.1)   ┌──────────────────────────┐
+│  Claude Desktop  │ ◄───────► │  Python FastMCP      │ ◄──────────────────► │  Civil3DMcpBridge.dll    │
+│  (any MCP client)│           │  civil3d-mcp         │   discovery of all   │  Civil 3D 2025 :7825     │
+└──────────────────┘           │  + AASHTO/COGO calcs │   live sessions      │  Civil 3D 2027 :7827 ... │
+                               └──────────────────────┘                      └────────────┬─────────────┘
+                                                                                          │ main thread,
+                                                                              LockDocument + Transaction
+                                                                                          ▼
+                                                                              Civil 3D .NET API (AeccDb, AcDb)
 ```
 
-* **C# add-in** (`plugin/`) — a NetLoadable bundle that boots an HTTP listener
-  the moment Civil 3D loads it. Worker threads marshal back to the Civil 3D
-  main UI thread via `Application.Idle` + `ConcurrentQueue<Action>` so every
-  database write happens on the correct thread inside a `LockDocument()` +
-  `Transaction` scope.
-* **Python MCP server** (`server/`) — FastMCP wrapper. Each tool is a thin
-  Pydantic-validated proxy that POSTs JSON to the bridge and returns the
-  response verbatim. Two meta-tools (`civil3d_bridge_health`,
-  `civil3d_call`) round out the surface.
+* **C# add-in** (`plugin/`) - one ApplicationPlugins bundle with a DLL per release
+  (`Contents/2025`, `Contents/2026`, `Contents/2027`). AutoCAD loads the one whose
+  `SeriesMin/SeriesMax` matches (R25.0 / R25.1 / R26.0). Each session listens on
+  `7800 + (year % 100)` (7825 / 7826 / 7827), overflowing to 7840-7859, and registers
+  itself in `%LOCALAPPDATA%\Civil3DMcpBridge\instances\<pid>.json`.
+* **Main-thread dispatch** - requests queue onto Civil 3D's UI thread; a posted
+  message wakes Civil 3D immediately (no waiting for mouse movement), work runs
+  only when AutoCAD is quiescent, and a caller that times out is cancelled rather
+  than executed late. A command or dialog in progress returns a clear "busy" error.
+* **Security** - loopback only; requests carrying a browser `Origin` header or a
+  non-loopback `Host` are refused (blocks web pages and DNS rebinding from driving
+  `run_command`).
+* **Python MCP server** (`server/`) - FastMCP, Pydantic-validated wrappers, automatic
+  session discovery, document targeting, design checks and engineering calculators.
 
 ---
 
 ## Quick start
 
-From a PowerShell prompt in the repo root, on the Windows workstation that
-has Civil 3D installed:
+On the Windows workstation with Civil 3D, from a PowerShell prompt in the repo root
+(close Civil 3D first):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The installer will:
+The installer detects every installed release, builds each DLL with the .NET 10 SDK
+(or deploys `dist\Civil3DMcpBridge-0.4.0.bundle.zip` if no SDK is present), deploys
+the bundle, creates a private Python venv, and registers `civil3d` in Claude Desktop.
+Then open Civil 3D, check the command line for
+`[Civil3DMcpBridge] Civil 3D 2027 listening on http://127.0.0.1:7827`, restart
+Claude Desktop, and ask *"list Civil 3D instances and run the bridge health check"*.
 
-1. Verify prerequisites (Civil 3D install path, .NET 8 SDK, Python 3.11+).
-2. `dotnet build -c Release` the plugin.
-3. Deploy the bundle to
-   `%APPDATA%\Autodesk\ApplicationPlugins\Civil3DMcpBridge.bundle\Contents\`.
-4. `pip install -e server\` — creates the `civil3d-mcp` console script.
-5. Merge a `civil3d` entry into
-   `%APPDATA%\Claude\claude_desktop_config.json`.
-
-Then:
-
-1. Start Civil 3D and open any DWG.
-2. At the command line, type `MCPSTATUS` — should show
-   `listening on http://127.0.0.1:7800`.
-3. Restart Claude Desktop. The hammer icon should now list ~74 `civil3d_*`
-   tools.
-
-See [`docs/INSTALL.md`](docs/INSTALL.md) for manual install + troubleshooting.
+Details, flags and troubleshooting: [`docs/INSTALL.md`](docs/INSTALL.md).
 
 ---
 
-## Tool inventory (74)
+## Tool inventory (128)
 
 | Domain | Tools |
-|--------|-------|
-| **Meta** (2) | `civil3d_bridge_health`, `civil3d_call` |
-| **Alignments** (10) | `list_alignments`, `get_alignment_info`, `get_xy_at_station`, `get_station_at_xy`, `point_at_chainage`, `export_alignment_geometry`, `create_alignment_from_polyline`, `create_offset_alignment`, `set_design_speed` |
-| **Profiles** (8) | `list_profiles`, `get_profile_info`, `get_elevation_at_station`, `add_vertical_curve`, `create_profile_from_surface`, `create_layout_profile`, `add_pvi`, `create_profile_view` |
-| **Corridors** (10) | `list_corridors`, `get_corridor_info`, `list_assemblies`, `rebuild_corridor`, `set_region_assembly`, `create_corridor`, `add_baseline_region`, `set_region_target_surface`, `export_corridor_sections` |
-| **Sampling** (3) | `create_sample_line_group`, `list_sample_line_groups`, `sample_surface_along_alignment` |
-| **Surfaces** (8) | `list_surfaces`, `get_surface_volume`, `get_elevation_at_xy`, `create_tin_surface`, `create_surface_from_points`, `create_persistent_volume_surface`, `add_breakline_from_polyline`, `add_points_to_surface` |
-| **Points** (6) | `list_points`, `create_point`, `import_points_csv`, `export_points_csv`, `list_point_groups`, `create_point_group` |
-| **Pipe networks** (4) | `list_pipe_networks`, `get_pipe_network_info`, `list_pipe_parts`, **`create_culvert_at_chainage`** ⭐ |
-| **Blocks** (5) | `list_blocks`, `insert_block_at_chainage`, `insert_blocks_batch`, **`create_signpost_at_chainage`** ⭐, **`create_km_post_series`** ⭐ |
-| **Road markings** (2) | `draw_lane_marking`, `draw_pedestrian_crossing` |
-| **Mass haul** (2) | `compute_quantity_takeoff`, `export_mass_haul_csv` |
-| **Junctions** (1) ⭐ | **`create_junction_corner_fillets`** (4 tangent fillet arcs + approach kerbs + optional channelising island) |
-| **Roundabouts** (1) ⭐ | **`create_roundabout_centerline`** (closed circular alignment + inner/outer kerb offsets) |
-| **Vehicle tracking** (2) ⭐ | **`swept_path_envelope`** (inner/outer swept polylines), **`create_turning_path_arc`** (single-arc template alignment) |
-| **Reports** (4) ⭐ | **`profile_design_report`**, **`alignment_overview_report`**, **`drawing_inventory_report`**, **`quantity_report`** (Python-side, markdown / json / csv) |
-| **Drawing utils** (8) | `get_drawing_info`, `save_drawing`, `zoom_to_alignment`, `zoom_extents`, `list_layers`, `create_layer`, `set_current_layer`, `run_command` |
+|---|---|
+| **Sessions** (9) | `bridge_health`, `list_instances`, `select_instance`, `select_document`, `list_documents`, `activate_document`, `get_drawing_settings`, `undo`, `call` |
+| **Alignments** (14) | list, info, **geometry_detail** (radii, spirals, deflections), xy↔station, point_at_chainage, export geometry, from polyline, **by PIs** (with S-C-S spirals), offset, design speed(s), **station equation**, **superelevation read-out** |
+| **Profiles** (13) | list, info, **geometry_detail with K-values**, elevation at station, **sample profile (CSV)**, from surface, layout, **by PVI table**, add PVI, **delete PVI**, vertical curve, profile view |
+| **Design checks** (2) | **`check_alignment_design`** (R_min, broken-back, reverse-curve tangents), **`check_profile_design`** (crest/sag K, curve length, max/min grade, un-curved grade breaks) |
+| **Corridors** (13) | list, info, regions, codes, rebuild, create, add region, set assembly/target, export sections, **corridor surfaces: list / create (Top, Datum, extents boundary)** |
+| **Earthworks** (4) | **`earthwork_by_sections`** (AEA cut/fill + mass ordinate straight from two surfaces), QTO, mass haul CSV, persistent volume surface |
+| **Surfaces** (14) | list, volume, elevation at XY, create TIN / from points, breaklines, add points, **statistics, slope/elevation banding, transect, boundaries, contour extraction, rebuild** |
+| **Sections** (6) | sample line groups (create/list), **list sample lines, export sampled sections (CSV), create section views grid**, sample along alignment |
+| **Feature lines** (4) | **list, create (polyline or 3D points), drape on surface, export vertices** |
+| **Points** (6) | list, create, import/export CSV, point groups |
+| **Pipes** (6) | gravity: list, info, parts, culvert at chainage; **pressure: list, pipe schedule by DN** |
+| **Drafting** (21) | layers, zoom, save, run_command, blocks, signposts, KM posts, lane markings, zebra, **polylines, 3D polylines, text, entity info, erase, polyline length/area schedule by layer, styles list/set** |
+| **Layout** (4) | junction corner fillets, roundabout centreline, swept path envelope, turning-path arc |
+| **Land** (1) | **sites and parcels schedule (m², ha, perimeter)** |
+| **Reports** (4) | profile design, alignment overview, drawing inventory, quantity |
+| **Calculators** (7, no Civil 3D needed) | **design controls (SSD, K, R_min), COGO inverse/forward, horizontal curve, Bowditch traverse, superelevation runoff, average end area** |
 
-Full per-tool reference: [`docs/TOOLS.md`](docs/TOOLS.md).
-
----
-
-## Headline automations
-
-These three pack the most operational value — see
-[`docs/AUTOMATION_RECIPES.md`](docs/AUTOMATION_RECIPES.md) for prompt
-patterns:
-
-* ⭐ **Culvert from chainage + sizing** — give an alignment, station, pipe
-  diameter and length; the bridge places a circular pipe with two
-  headwall structures perpendicular to the alignment (with optional
-  skew), creates the `DRAINAGE` network if it doesn't exist, derives
-  inverts from the FG profile when not supplied, and labels the
-  centreline at the invert.
-* ⭐ **Signpost / km-post placement at chainage** — opinionated wrappers
-  around block insertion. `create_signpost_at_chainage` takes a sign
-  code (R1-1, W1-1, GS-1 …), legend text, station and side;
-  `create_km_post_series` walks the full alignment and drops a KM post
-  every N metres.
-* ⭐ **Road markings that follow geometry** — `draw_lane_marking` produces
-  solid / dashed / double polylines that follow alignment curvature
-  with configurable dash + gap; `draw_pedestrian_crossing` renders a
-  zebra perpendicular to the alignment.
+Bold = new in 0.4.0. Full reference: [`docs/TOOLS.md`](docs/TOOLS.md).
+Design-check basis: AASHTO *Green Book* 2018 (metric); project criteria (e.g. MoWT
+Road Design Manual) govern where they differ, and each result states its assumptions.
 
 ---
 
-## Layout
+## Sources folded into 0.4.0
 
+| Source | What was adopted |
+|---|---|
+| Autodesk AutoCAD 2027 SDK notes | .NET 10 target, R26.0 series, mandatory rebuild per release |
+| [JhulVF/Civil3d-mcp-tcce](https://github.com/JhulVF/Civil3d-mcp-tcce) (MIT) | 2027 build notes; corridor surfaces, styles, feature line and earthwork tool ideas |
+| [Joshua8-AI/Civil3D-mcp](https://github.com/Joshua8-AI/Civil3D-mcp) (MIT) | ApplicationPlugins bundle instead of NETLOAD (SECURELOAD-safe), per-release port |
+| [amirclyde/Civil3D-mcp](https://github.com/amirclyde/Civil3D-mcp) / Sacred-G (MIT) | QC checks, COGO, superelevation, section views, parcels, pressure networks scope |
+| [antonhofstader/Civil3D-mcp-python-COM](https://github.com/antonhofstader/Civil3D-mcp-python-COM) (MIT) | surface definition / statistics scope |
+
+No code was copied; features were re-implemented against this bridge's architecture.
+
+---
+
+## Tests
+
+```bash
+pip install -e "server[test]"
+pytest            # 44 tests: models, AASHTO/COGO calcs, discovery, MCP->HTTP->mock bridge
 ```
-civil3d-mcp/
-├── install.ps1                  # one-shot Windows installer
-├── plugin/                      # C# in-process add-in
-│   ├── Civil3DMcpBridge.csproj
-│   ├── PackageContents.xml
-│   └── src/
-│       ├── Plugin.cs            # IExtensionApplication, command handlers
-│       ├── BridgeServer.cs      # HttpListener at 127.0.0.1:7800
-│       ├── MainThreadDispatcher.cs
-│       ├── ToolRegistry.cs
-│       ├── Json.cs              # tiny non-Newtonsoft JSON helper
-│       ├── GeometryHelpers.cs
-│       └── Tools/               # one file per domain
-│           ├── AlignmentTools.cs
-│           ├── AlignmentEditTools.cs
-│           ├── ProfileTools.cs
-│           ├── ProfileEditTools.cs
-│           ├── CorridorTools.cs
-│           ├── SamplingTools.cs
-│           ├── SurfaceTools.cs
-│           ├── SurfaceEditTools.cs
-│           ├── PointTools.cs
-│           ├── PipeNetworkTools.cs
-│           ├── BlockTools.cs
-│           ├── MarkingTools.cs
-│           ├── MassHaulTools.cs
-│           └── DrawingTools.cs
-├── server/                      # Python FastMCP wrapper
-│   ├── pyproject.toml
-│   └── src/civil3d_mcp/
-│       ├── __init__.py
-│       ├── _instance.py         # FastMCP singleton + READ/WRITE annotations + call()
-│       ├── bridge.py            # httpx async client, BridgeError
-│       ├── server.py            # main() entry point, meta tools
-│       ├── models.py            # 54 Pydantic input models
-│       └── tools/
-│           ├── __init__.py
-│           ├── alignments.py
-│           ├── profiles.py
-│           ├── corridors.py
-│           ├── surfaces.py
-│           ├── points.py
-│           ├── pipes.py
-│           ├── blocks.py
-│           ├── markings.py
-│           ├── masshaul.py
-│           ├── sampling.py
-│           ├── drawing.py
-│           └── misc.py
-├── tests/
-│   ├── mock_bridge.py           # aiohttp simulator; canned responses for every tool
-│   ├── test_models.py           # validates all 54 Pydantic models
-│   ├── integration_test.py      # read-only smoke against a real bridge
-│   ├── smoke.ps1                # PowerShell smoke test
-│   └── README.md
-└── docs/
-    ├── ARCHITECTURE.md          # how it's wired, how to add a tool
-    ├── INSTALL.md               # what install.ps1 does, manual fallback
-    ├── TOOLS.md                 # per-tool reference
-    ├── AUTOMATION_RECIPES.md    # prompt patterns for headline automations
-    └── TESTING.md
-```
+
+The C# add-in is compile-checked for all three releases against the official
+`AutoCAD.NET` 25.0.0 / 25.1.0 / 26.0.0 reference packages and Civil 3D reference
+assemblies; runtime verification needs Civil 3D (see [`docs/TESTING.md`](docs/TESTING.md)).
 
 ---
 
 ## License & support
 
-Internal SANS LIMITE / personal use. No warranty. The bridge runs only
-on `127.0.0.1` and does **not** listen on any external interface.
-
-If a tool call fails, check:
-
-1. Civil 3D is open and the add-in loaded (`MCPSTATUS` at command line).
-2. The Python server is wired into Claude Desktop config.
-3. Read the error in Civil 3D's command line — `ToolException` paths
-   give human-readable hints.
-
-For deeper diagnostics see [`docs/TESTING.md`](docs/TESTING.md).
+Personal / AfroBIM / SANS LIMITE use. No warranty. The bridge listens on `127.0.0.1` only.
+If a call fails: `MCPSTATUS` in Civil 3D, `civil3d_list_instances` in Claude, and the
+error text (tool errors carry plain-language hints).

@@ -206,3 +206,280 @@ Python-only composition tools — they call existing read tools and format the r
 * **Strings vs numbers**: keys like `alignment`, `surface`, `network` accept
   either a name or a handle (`<...>`). Names are matched
   case-insensitively but exactly otherwise.
+
+
+---
+
+## New in 0.4.0
+
+Arguments are the fields of each tool's `params` object (see `server/src/civil3d_mcp/models.py`).
+
+### `calc_average_end_area`
+Volumes and mass-haul ordinates from a station / cut area / fill area table.
+
+Args: `rows`*, `fill_factor`  (* required)
+
+### `calc_cogo_forward`
+Coordinates from a point, whole-circle bearing and distance.
+
+Args: `from_xy`*, `bearing_deg`*, `distance`*  (* required)
+
+### `calc_cogo_inverse`
+Grid bearing (whole circle and DMS) and distance between two points.
+
+Args: `from_xy`*, `to_xy`*  (* required)
+
+### `calc_design_controls`
+Stopping sight distance, minimum crest/sag K, minimum radius and f_max for a design speed (AASHTO 2018 metric), with the formulas and assumptions used.
+
+Args: `design_speed_kph`*, `grade_pct`, `reaction_time_s`, `e_max_pct`  (* required)
+
+### `calc_horizontal_curve`
+Tangent length, arc length, long chord, external, middle ordinate (and TC/CT stations).
+
+Args: `radius`*, `deflection_deg`*, `pi_station`  (* required)
+
+### `calc_superelevation_runoff`
+Superelevation runoff and tangent runout lengths (AASHTO 2018 eq. 3-23/3-24).
+
+Args: `design_speed_kph`*, `e_design_pct`*, `lane_width_m`, `lanes_rotated`, `normal_crossfall_pct`  (* required)
+
+### `calc_traverse_bowditch`
+Compute a traverse from bearings and distances, report misclosure and precision, and adjust by the Bowditch (compass) rule.
+
+Args: `start_xy`*, `legs`*, `close_xy`  (* required)
+
+### `civil3d_activate_document`
+Bring an open drawing to the front (makes it the active MDI document).
+
+Args: `document`*  (* required)
+
+### `civil3d_add_station_equation`
+Add a station equation (e.g. to tie to an existing chainage at a section break).
+
+Args: `alignment`*, `raw_station_back`*, `station_ahead`*, `decreasing`  (* required)
+
+### `civil3d_add_surface_boundary`
+Add an outer / hide / show / data-clip boundary from a closed polyline and rebuild.
+
+Args: `surface`*, `polyline_handle`*, `type`, `mid_ordinate`, `non_destructive`  (* required)
+
+### `civil3d_analyze_surface_slopes`
+Area-weighted slope bands (%) and optional elevation bands from the TIN triangles.
+
+Args: `surface`*, `bands_pct`, `elevation_interval`  (* required)
+
+### `civil3d_check_alignment_design`
+Check every horizontal curve against R_min for the design speed and e_max (AASHTO 2018 metric), and flag short tangents between reverse curves and broken-back curves. Returns pass/flag per element.
+
+Args: `alignment`*, `design_speed_kph`*, `e_max_pct`, `min_tangent_m`  (* required)
+
+### `civil3d_check_profile_design`
+Check vertical curves for minimum K (crest stopping sight distance, sag headlight) and minimum length, and tangents for max/min grade. AASHTO 2018 metric basis.
+
+Args: `alignment`*, `profile`*, `design_speed_kph`*, `max_grade_pct`, `min_grade_pct`  (* required)
+
+### `civil3d_create_3d_polyline`
+Create a 3D polyline from [x, y, z] points (e.g. for breaklines).
+
+Args: `points`*, `closed`, `layer`  (* required)
+
+### `civil3d_create_alignment_by_pis`
+Create a horizontal alignment from PI coordinates with a radius per interior PI and optional symmetric clothoid spirals (spiral-curve-spiral).
+
+Args: `name`*, `pis`*, `radii`, `spiral_lengths`, `site`, `style`, `label_set`, `layer`  (* required)
+
+### `civil3d_create_corridor_surface`
+Create a corridor surface (e.g. Top for finished grade, Datum for formation) from link codes, add a corridor-extents boundary and rebuild.
+
+Args: `corridor`*, `name`*, `link_codes`, `feature_line_codes`, `overhang`, `add_extents_boundary`, `rebuild`  (* required)
+
+### `civil3d_create_feature_line`
+Create a feature line from an existing polyline (handle) or from [x, y, z] points.
+
+Args: `name`, `polyline_handle`, `points`, `site`, `layer`  (* required)
+
+### `civil3d_create_polyline`
+Create a 2D polyline (optionally closed) from [x, y] points.
+
+Args: `points`*, `closed`, `elevation`, `layer`  (* required)
+
+### `civil3d_create_profile_by_pvis`
+Build a layout (design) profile from [station, elevation] PVIs and a symmetric parabola length per interior PVI.
+
+Args: `alignment`*, `name`*, `pvis`*, `curve_lengths`, `style`, `label_set`, `layer`  (* required)
+
+### `civil3d_create_section_views`
+Create one section view per sample line, laid out in a grid from an origin.
+
+Args: `alignment`*, `group`*, `origin`*, `columns`, `spacing_x`, `spacing_y`, `start_station`, `end_station`, `max_views`  (* required)
+
+### `civil3d_create_text`
+Place single-line text or MText.
+
+Args: `text`*, `x`*, `y`*, `height`, `rotation_deg`, `layer`, `mtext`, `width`  (* required)
+
+### `civil3d_delete_pvi`
+Remove the PVI nearest a station (within tolerance) from a layout profile.
+
+Args: `alignment`*, `profile`*, `station`*, `tolerance`  (* required)
+
+### `civil3d_earthwork_by_sections`
+Cut/fill volumes between an existing and a design surface along an alignment by average end area, sampled straight from the surfaces (no sample lines or QTO setup). Returns per-station areas, volumes, mass-haul ordinate and totals; optional CSV. Independent check on Civil 3D's Compute Materials.
+
+Args: `alignment`*, `existing_surface`*, `design_surface`*, `interval`, `left_width`, `right_width`, `sample_step`, `start_station`, `end_station`, `stations`, `fill_factor`, `strip_depth`, `csv_path`  (* required)
+
+### `civil3d_erase_entities`
+Erase objects by handle. Reversible with civil3d_undo until the drawing is closed.
+
+Args: `handles`*  (* required)
+
+### `civil3d_export_sampled_sections`
+Offset/elevation points of every sampled section (EG, FG, corridor surfaces) per station; write a CSV for cross-section QA or third-party volume checks.
+
+Args: `alignment`*, `group`*, `sources`, `csv_path`  (* required)
+
+### `civil3d_extract_surface_contours`
+Extract contour polylines at an interval, optionally onto a layer.
+
+Args: `surface`*, `interval`, `layer`  (* required)
+
+### `civil3d_feature_line_elevations_from_surface`
+Assign feature line elevations from a surface, optionally inserting grade breaks.
+
+Args: `name`, `handle`, `surface`*, `insert_grade_breaks`  (* required)
+
+### `civil3d_get_alignment_geometry_detail`
+Every tangent, arc and spiral with stations, lengths, radii, deflections, spiral A-values, coordinates, plus station equations.
+
+Args: `alignment`*  (* required)
+
+### `civil3d_get_corridor_codes`
+Link, point and shape codes present in a corridor (needed to build surfaces).
+
+Args: `corridor`*  (* required)
+
+### `civil3d_get_corridor_regions`
+Baselines (alignment/profile) and regions with station ranges and assemblies.
+
+Args: `corridor`*  (* required)
+
+### `civil3d_get_design_speeds`
+Design speed table assigned to an alignment.
+
+Args: `alignment`*  (* required)
+
+### `civil3d_get_drawing_settings`
+Drawing units, coordinate system code (e.g. UTM-36N / Arc 1960), angular units, scale and extents. Check this before trusting coordinates or volumes.
+
+Args: none  (* required)
+
+### `civil3d_get_entity_info`
+Type, layer, name, extents, length and area for any object handle.
+
+Args: `handle`*  (* required)
+
+### `civil3d_get_feature_line_points`
+All PI and elevation points with running 2D chainage; optional CSV.
+
+Args: `name`, `handle`, `csv_path`  (* required)
+
+### `civil3d_get_pressure_network_schedule`
+Pipe lengths grouped by part and nominal diameter; optional CSV.
+
+Args: `network`*, `csv_path`  (* required)
+
+### `civil3d_get_profile_geometry_detail`
+Tangents (grades) and vertical curves (type, length, K, A) plus the PVI table.
+
+Args: `alignment`*, `profile`*  (* required)
+
+### `civil3d_get_superelevation`
+Superelevation curves and critical stations with lane cross-slopes (%).
+
+Args: `alignment`*  (* required)
+
+### `civil3d_get_surface_statistics`
+Point count, min/max/mean elevation, extents, 2D/3D area and grade statistics.
+
+Args: `surface`*  (* required)
+
+### `civil3d_list_corridor_surfaces`
+Corridor surfaces with their link / feature line codes and boundaries.
+
+Args: `corridor`*  (* required)
+
+### `civil3d_list_documents`
+Open drawings in the selected Civil 3D session, the active one, and any command in progress.
+
+Args: none  (* required)
+
+### `civil3d_list_feature_lines`
+Feature lines in all sites and site-less, with 2D/3D length and elevation range.
+
+Args: none  (* required)
+
+### `civil3d_list_instances`
+List every running Civil 3D session with the bridge loaded (release, pid, port), and which one calls currently go to. Use when 2025 and 2027 are open side by side.
+
+Args: none  (* required)
+
+### `civil3d_list_pressure_networks`
+Pressure (water) networks with pipe, fitting and appurtenance counts.
+
+Args: none  (* required)
+
+### `civil3d_list_sample_lines`
+Sample lines in a group with station, swath offsets and section count.
+
+Args: `alignment`*, `group`*  (* required)
+
+### `civil3d_list_sites_parcels`
+Sites with parcel number, area (m2 and ha) and perimeter; optional CSV for land schedules.
+
+Args: `csv_path`  (* required)
+
+### `civil3d_list_styles`
+Style names per collection (alignment, profile, surface, profile_view, section_view, point, corridor, label sets ...). Omit `collection` for a summary of all.
+
+Args: `collection`  (* required)
+
+### `civil3d_measure_polylines`
+Total length and area of polylines grouped by layer, with wildcard layer filters. Quick BOQ take-off for kerbs, drains, edge lines and closed pavement areas.
+
+Args: `layers`, `closed_only`, `include_items`  (* required)
+
+### `civil3d_rebuild_surface`
+Rebuild an out-of-date surface.
+
+Args: `surface`*  (* required)
+
+### `civil3d_sample_profile`
+Elevation and grade at a fixed interval along a profile; optional CSV for long-section tables.
+
+Args: `alignment`*, `profile`*, `interval`, `start_station`, `end_station`, `csv_path`  (* required)
+
+### `civil3d_sample_surface_transect`
+Elevations along a line (start/end/step) or at a list of points.
+
+Args: `surface`*, `start`, `end`, `points`, `step`  (* required)
+
+### `civil3d_select_document`
+Route following calls to a specific open drawing (file name or full path) without switching windows. Omit `document` to go back to the active drawing.
+
+Args: `document`  (* required)
+
+### `civil3d_select_instance`
+Pin all following calls to one Civil 3D session, by release (e.g. 2027), process id, port or URL. Pass clear=true to return to automatic selection.
+
+Args: `release`, `pid`, `port`, `url`, `clear`  (* required)
+
+### `civil3d_set_object_style`
+Apply a named style to an alignment, profile, surface, corridor, or any styled object by handle.
+
+Args: `object_type`*, `style`*, `name`, `alignment`, `handle`  (* required)
+
+### `civil3d_undo`
+Queue UNDO for N steps in the target drawing (each MCP write is normally one step).
+
+Args: `steps`  (* required)

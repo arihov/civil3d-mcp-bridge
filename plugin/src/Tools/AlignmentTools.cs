@@ -183,15 +183,3 @@ internal static class AlignmentTools
         return (Alignment)tr.GetObject(id.Value, OpenMode.ForRead);
     }
 }
-
-internal static class DrawingContext
-{
-    public static (Autodesk.AutoCAD.ApplicationServices.Document Doc, CivilDocument Civ) RequireActive()
-    {
-        var doc = AcadApp.DocumentManager.MdiActiveDocument
-            ?? throw new ToolException("no active Civil 3D drawing — open a DWG first");
-        var civ = CivilApplication.ActiveDocument
-            ?? throw new ToolException("active drawing is not a Civil 3D document");
-        return (doc, civ);
-    }
-}

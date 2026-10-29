@@ -1,10 +1,12 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace Civil3DMcpBridge;
 
@@ -15,11 +17,16 @@ internal sealed class BridgeServer
     private readonly CancellationTokenSource _cts = new();
     private Task? _acceptLoop;
 
+    /// <summary>Default per-call ceiling; callers may pass timeoutMs (max 30 min).</summary>
+    private const int DefaultTimeoutMs = 300_000;
+
     public string UrlPrefix { get; }
+    public int Port { get; }
 
     public BridgeServer(int port, MainThreadDispatcher dispatcher)
     {
         _dispatcher = dispatcher;
+        Port = port;
         UrlPrefix = $"http://127.0.0.1:{port}/";
         _listener = new HttpListener();
         _listener.Prefixes.Add(UrlPrefix);
@@ -29,10 +36,12 @@ internal sealed class BridgeServer
     {
         _listener.Start();
         _acceptLoop = Task.Run(AcceptLoopAsync);
+        InstanceRegistry.Write(Port);
     }
 
     public void Stop()
     {
+        InstanceRegistry.Remove();
         try
         {
             _cts.Cancel();
@@ -56,6 +65,23 @@ internal sealed class BridgeServer
         }
     }
 
+    /// <summary>
+    /// Browser-borne requests are refused: a web page could otherwise POST to
+    /// 127.0.0.1 and drive run_command. Native MCP clients send no Origin
+    /// header. DNS-rebinding is blocked by requiring a loopback Host header.
+    /// </summary>
+    private static string? RejectReason(HttpListenerRequest req)
+    {
+        var origin = req.Headers["Origin"];
+        if (!string.IsNullOrEmpty(origin) && origin != "null"
+            && Environment.GetEnvironmentVariable("CIVIL3D_BRIDGE_ALLOW_BROWSER") != "1")
+            return "cross-origin browser requests are not accepted";
+        var host = (req.Headers["Host"] ?? "").Split(':')[0].Trim().ToLowerInvariant();
+        if (host is not ("127.0.0.1" or "localhost" or "[::1]" or ""))
+            return $"unexpected Host header '{host}'";
+        return null;
+    }
+
     private async Task HandleAsync(HttpListenerContext ctx)
     {
         try
@@ -63,15 +89,15 @@ internal sealed class BridgeServer
             var path = ctx.Request.Url?.AbsolutePath ?? "/";
             var method = ctx.Request.HttpMethod;
 
+            if (RejectReason(ctx.Request) is { } reason)
+            {
+                await WriteJsonAsync(ctx, 403, new { ok = false, error = reason });
+                return;
+            }
+
             if (method == "GET" && path == "/health")
             {
-                await WriteJsonAsync(ctx, 200, new
-                {
-                    ok = true,
-                    version = "0.3.0",
-                    toolCount = ToolRegistry.Count,
-                    tools = ToolRegistry.Names,
-                });
+                await WriteJsonAsync(ctx, 200, await HealthPayloadAsync());
                 return;
             }
 
@@ -88,6 +114,37 @@ internal sealed class BridgeServer
             try { await WriteJsonAsync(ctx, 500, new { ok = false, error = $"bridge error: {ex.Message}" }); }
             catch { }
         }
+    }
+
+    private async Task<object> HealthPayloadAsync()
+    {
+        // Document info must be read on the main thread; don't block health on it.
+        object? docs = null;
+        try
+        {
+            using var cts = new CancellationTokenSource(1500);
+            var task = _dispatcher.RunOnMainThreadAsync(DrawingContext.DescribeDocuments, cts.Token);
+            if (await Task.WhenAny(task, Task.Delay(1500)) == task && task.IsCompletedSuccessfully)
+                docs = task.Result;
+            else cts.Cancel();
+        }
+        catch { }
+
+        return new
+        {
+            ok = true,
+            version = InstanceRegistry.BridgeVersion,
+            release = InstanceRegistry.ReleaseYear,
+            acadVersion = InstanceRegistry.AcadVersion,
+            runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+            pid = Environment.ProcessId,
+            port = Port,
+            busy = docs == null,
+            pendingCalls = _dispatcher.PendingCount,
+            documents = docs,
+            toolCount = ToolRegistry.Count,
+            tools = ToolRegistry.Names,
+        };
     }
 
     private async Task HandleInvokeAsync(HttpListenerContext ctx)
@@ -124,14 +181,35 @@ internal sealed class BridgeServer
         }
 
         var args = req.Args ?? JsonDocument.Parse("{}").RootElement;
+        var timeoutMs = Math.Clamp(req.TimeoutMs ?? DefaultTimeoutMs, 1_000, 1_800_000);
+        var document = string.IsNullOrWhiteSpace(req.Document) ? null : req.Document;
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        using var cts = new CancellationTokenSource();
 
         try
         {
-            var result = await _dispatcher.RunOnMainThreadAsync(() => handler!(args)).ConfigureAwait(false);
+            var work = _dispatcher.RunOnMainThreadAsync(() =>
+            {
+                DrawingContext.TargetDocument = document;
+                try { return handler!(args); }
+                finally { DrawingContext.TargetDocument = null; }
+            }, cts.Token);
+
+            if (await Task.WhenAny(work, Task.Delay(timeoutMs)).ConfigureAwait(false) != work)
+            {
+                cts.Cancel();
+                sw.Stop();
+                var msg = $"timed out after {timeoutMs / 1000}s waiting for Civil 3D. "
+                          + "If a command, dialog or grip edit is active, finish or cancel it (Esc) and retry.";
+                InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, msg);
+                await WriteJsonAsync(ctx, 504, new { ok = false, error = msg });
+                return;
+            }
+
+            var result = await work.ConfigureAwait(false);
             sw.Stop();
             InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, true, null);
-            await WriteJsonAsync(ctx, 200, new { ok = true, result });
+            await WriteJsonAsync(ctx, 200, new { ok = true, result, elapsedMs = Math.Round(sw.Elapsed.TotalMilliseconds) });
         }
         catch (ToolException tex)
         {
@@ -139,11 +217,17 @@ internal sealed class BridgeServer
             InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, tex.Message);
             await WriteJsonAsync(ctx, 400, new { ok = false, error = tex.Message });
         }
+        catch (TaskCanceledException)
+        {
+            sw.Stop();
+            await WriteJsonAsync(ctx, 504, new { ok = false, error = "call cancelled before Civil 3D could run it" });
+        }
         catch (Exception ex)
         {
             sw.Stop();
-            InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, $"{ex.GetType().Name}: {ex.Message}");
-            await WriteJsonAsync(ctx, 500, new { ok = false, error = $"{ex.GetType().Name}: {ex.Message}" });
+            var inner = ex is AggregateException ae && ae.InnerExceptions.Count == 1 ? ae.InnerExceptions[0] : ex;
+            InvocationLog.Record(req.Tool!, sw.Elapsed.TotalMilliseconds, false, $"{inner.GetType().Name}: {inner.Message}");
+            await WriteJsonAsync(ctx, 500, new { ok = false, error = $"{inner.GetType().Name}: {inner.Message}" });
         }
     }
 
@@ -162,5 +246,8 @@ internal sealed class BridgeServer
     {
         public string? Tool { get; set; }
         public JsonElement? Args { get; set; }
+        /// <summary>Optional: target an open drawing by file name or full path instead of the active one.</summary>
+        public string? Document { get; set; }
+        public int? TimeoutMs { get; set; }
     }
 }

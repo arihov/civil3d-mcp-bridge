@@ -1,64 +1,58 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Build one release at a time:
+      dotnet build -c Release -p:C3DVersion=2027                       (net10.0-windows)
+      dotnet build -c Release -p:C3DVersion=2026                       (net8.0-windows)
+      dotnet build -c Release -p:C3DVersion=2026 -p:C3DNet=net10.0-windows
+                                       (2026 after the Aug-2026 .NET 10 update)
+      dotnet build -c Release -p:C3DVersion=2025                       (net8.0-windows)
+    Civil3DPath defaults to C:\Program Files\Autodesk\AutoCAD <C3DVersion>.
+    build.ps1 / install.ps1 detect installed releases and drive this for you.
+  -->
+
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <C3DNet Condition="'$(C3DNet)' == '' And '$(C3DVersion)' == '2027'">net10.0-windows</C3DNet>
+    <C3DNet Condition="'$(C3DNet)' == ''">net8.0-windows</C3DNet>
+    <TargetFramework>$(C3DNet)</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <RootNamespace>Civil3DMcpBridge</RootNamespace>
     <AssemblyName>Civil3DMcpBridge</AssemblyName>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <Version>0.3.0</Version>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Version>0.4.0</Version>
+    <DefineConstants>$(DefineConstants);C3D$(C3DVersion)</DefineConstants>
+    <OutputPath>bin\$(Configuration)\$(C3DVersion)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- AutoCAD references are x64; suppress the AnyCPU mismatch noise. -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    <NoWarn>$(NoWarn);CA1416;NU1701</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Civil3DPath Condition="'$(Civil3DPath)' == ''">C:\Program Files\Autodesk\AutoCAD 2026</Civil3DPath>
+    <Civil3DPath Condition="'$(Civil3DPath)' == ''">C:\Program Files\Autodesk\AutoCAD $(C3DVersion)</Civil3DPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="AcCoreMgd">
-      <HintPath>$(Civil3DPath)\AcCoreMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="AcDbMgd">
-      <HintPath>$(Civil3DPath)\AcDbMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="AcMgd">
-      <HintPath>$(Civil3DPath)\AcMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="AecBaseMgd">
-      <HintPath>$(Civil3DPath)\ACA\AecBaseMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="AdWindows">
-      <HintPath>$(Civil3DPath)\AdWindows.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="AeccDbMgd">
-      <HintPath>$(Civil3DPath)\C3D\AeccDbMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="AeccPressurePipesMgd">
-      <HintPath>$(Civil3DPath)\C3D\AeccPressurePipesMgd.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <Reference Include="AcCoreMgd"><HintPath>$(Civil3DPath)\AcCoreMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AcDbMgd"><HintPath>$(Civil3DPath)\AcDbMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AcMgd"><HintPath>$(Civil3DPath)\AcMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AdWindows"><HintPath>$(Civil3DPath)\AdWindows.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AecBaseMgd"><HintPath>$(Civil3DPath)\ACA\AecBaseMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AeccDbMgd"><HintPath>$(Civil3DPath)\C3D\AeccDbMgd.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AeccPressurePipesMgd"><HintPath>$(Civil3DPath)\C3D\AeccPressurePipesMgd.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
   <ItemGroup>
     <None Update="PackageContents.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

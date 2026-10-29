@@ -10,7 +10,6 @@ namespace Civil3DMcpBridge;
 
 public sealed class Plugin : IExtensionApplication
 {
-    internal const int DefaultPort = 7800;
     private static BridgeServer? _server;
     private static MainThreadDispatcher? _dispatcher;
 
@@ -40,8 +39,21 @@ public sealed class Plugin : IExtensionApplication
         Tools.JunctionTools.Register();
         Tools.RoundaboutTools.Register();
         Tools.TrackingTools.Register();
+        // v0.4.0 families
+        Tools.SessionTools.Register();
+        Tools.AlignmentDesignTools.Register();
+        Tools.ProfileDesignTools.Register();
+        Tools.FeatureLineTools.Register();
+        Tools.EarthworkTools.Register();
+        Tools.SurfaceAnalysisTools.Register();
+        Tools.SectionTools.Register();
+        Tools.CorridorSurfaceTools.Register();
+        Tools.StyleTools.Register();
+        Tools.GeometryTools.Register();
+        Tools.ParcelTools.Register();
+        Tools.PressureNetworkTools.Register();
 
-        try { StartBridge(DefaultPort); }
+        try { StartBridge(); }
         catch (System.Exception ex)
         {
             WriteLine($"[Civil3DMcpBridge] auto-start failed: {ex.Message}");
@@ -64,7 +76,11 @@ public sealed class Plugin : IExtensionApplication
     }
 
     [CommandMethod("MCPSTART", CommandFlags.Modal)]
-    public void StartCommand() => StartBridge(DefaultPort);
+    public void StartCommand()
+    {
+        try { StartBridge(); }
+        catch (System.Exception ex) { WriteLine($"[Civil3DMcpBridge] start failed: {ex.Message}"); }
+    }
 
     [CommandMethod("MCPSTOP", CommandFlags.Modal)]
     public void StopCommand() => StopBridge();
@@ -73,13 +89,15 @@ public sealed class Plugin : IExtensionApplication
     public void RestartCommand()
     {
         StopBridge();
-        StartBridge(DefaultPort);
+        try { StartBridge(); }
+        catch (System.Exception ex) { WriteLine($"[Civil3DMcpBridge] restart failed: {ex.Message}"); }
     }
 
     [CommandMethod("MCPSTATUS", CommandFlags.Modal)]
     public void StatusCommand()
     {
         if (_server is null) { WriteLine("[Civil3DMcpBridge] bridge is not running"); return; }
+        WriteLine($"[Civil3DMcpBridge] v{InstanceRegistry.BridgeVersion} for Civil 3D {InstanceRegistry.ReleaseYear} (AutoCAD {InstanceRegistry.AcadVersion}, {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription})");
         WriteLine($"[Civil3DMcpBridge] bridge listening on {_server.UrlPrefix}");
         WriteLine($"[Civil3DMcpBridge] registered tools: {ToolRegistry.Count}");
         WriteLine($"[Civil3DMcpBridge] total calls: {InvocationLog.TotalCalls} ({InvocationLog.TotalErrors} errors)");
@@ -140,7 +158,7 @@ public sealed class Plugin : IExtensionApplication
         WriteLine("[Civil3DMcpBridge] USER_MANUAL.pdf not found beside plugin or in repo docs/.");
     }
 
-    private static void StartBridge(int port)
+    private static void StartBridge()
     {
         if (_server is not null)
         {
@@ -148,9 +166,29 @@ public sealed class Plugin : IExtensionApplication
             return;
         }
         _dispatcher = new MainThreadDispatcher();
-        _server = new BridgeServer(port, _dispatcher);
-        _server.Start();
-        WriteLine($"[Civil3DMcpBridge] listening on {_server.UrlPrefix} ({ToolRegistry.Count} tools)");
+        System.Exception? last = null;
+        foreach (var port in InstanceRegistry.CandidatePorts())
+        {
+            if (!InstanceRegistry.IsPortFree(port)) continue;
+            var server = new BridgeServer(port, _dispatcher);
+            try
+            {
+                server.Start();
+                _server = server;
+                break;
+            }
+            catch (System.Exception ex) { last = ex; try { server.Stop(); } catch { } }
+        }
+        if (_server is null)
+        {
+            _dispatcher.Dispose();
+            _dispatcher = null;
+            throw new System.InvalidOperationException(
+                $"no free bridge port (tried {InstanceRegistry.PreferredPort} and 7840-7859): {last?.Message}");
+        }
+        if (_server.Port != InstanceRegistry.PreferredPort)
+            WriteLine($"[Civil3DMcpBridge] preferred port {InstanceRegistry.PreferredPort} busy, using {_server.Port}");
+        WriteLine($"[Civil3DMcpBridge] Civil 3D {InstanceRegistry.ReleaseYear} listening on {_server.UrlPrefix} ({ToolRegistry.Count} tools)");
     }
 
     private static void StopBridge()

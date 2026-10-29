@@ -54,7 +54,7 @@ internal static class InvocationLog
     public static IReadOnlyList<Entry> Recent()
     {
         // Snapshot newest-first.
-        return _entries.ToArray().Reverse().ToList();
+        return Enumerable.Reverse(_entries.ToArray()).ToList();
     }
 
     public static IReadOnlyDictionary<string, Stats> Aggregates()
