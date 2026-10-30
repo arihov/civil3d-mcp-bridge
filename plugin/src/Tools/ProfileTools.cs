@@ -85,7 +85,7 @@ internal static class ProfileTools
         {
             pvis.Add(new
             {
-                station = pvi.Station,
+                station = pvi.RawStation,
                 elevation = pvi.Elevation,
                 gradeIn = pvi.GradeIn,
                 gradeOut = pvi.GradeOut,
@@ -156,7 +156,7 @@ internal static class ProfileTools
         double bestDelta = double.MaxValue;
         foreach (ProfilePVI pvi in profile.PVIs)
         {
-            var d = Math.Abs(pvi.Station - pviStation);
+            var d = Math.Abs(pvi.RawStation - pviStation);
             if (d <= tol && d < bestDelta) { targetPvi = pvi; bestDelta = d; }
         }
         if (targetPvi is null)
@@ -170,7 +170,7 @@ internal static class ProfileTools
         {
             alignment = alignmentName,
             profile = profileName,
-            pviStation = targetPvi.Station,
+            pviStation = targetPvi.RawStation,
             elevation = targetPvi.Elevation,
             length,
             curveType = newCurve.CurveType.ToString(),

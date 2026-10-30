@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "civil3d-mcp"
-version = "0.3.0"
+version = "0.4.0"
 description = "MCP server bridging Claude to Autodesk Civil 3D via an in-process C# add-in"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "SANS LIMITE Consults Ltd" }]
 dependencies = [
-    "mcp>=1.0.0",
+    "mcp>=1.10,<2",  # mcp 2.x renamed FastMCP to MCPServer; pin until migrated
     "httpx>=0.27.0",
     "pydantic>=2.7",
 ]

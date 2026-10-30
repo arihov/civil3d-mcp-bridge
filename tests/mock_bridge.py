@@ -27,7 +27,7 @@ from aiohttp import web
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 log = logging.getLogger("mock-bridge")
 
-VERSION = "0.2.0-mock"
+VERSION = "0.4.0-mock"
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +242,34 @@ HANDLERS: dict[str, Any] = {
                     "elevation": 1200 + i * 0.1, "description": f"GP-{i+1}"}
                    for i in range(min(int(a.get("limit", 100)), 5))],
     },
+    # ── v0.4 design tools ────────────────────────────────────────────────
+    "civil3d_get_alignment_geometry_detail": lambda a: {
+        "alignment": a.get("alignment"), "length": 1200.0, "startStation": 0.0, "endStation": 1200.0,
+        "elements": [
+            {"kind": "tangent", "startStation": 0.0, "endStation": 300.0, "length": 300.0},
+            {"kind": "arc", "startStation": 300.0, "endStation": 450.0, "length": 150.0, "radius": 180.0, "clockwise": True},
+            {"kind": "tangent", "startStation": 450.0, "endStation": 480.0, "length": 30.0},
+            {"kind": "arc", "startStation": 480.0, "endStation": 700.0, "length": 220.0, "radius": 400.0, "clockwise": True},
+            {"kind": "tangent", "startStation": 700.0, "endStation": 1200.0, "length": 500.0},
+        ],
+        "stationEquations": [],
+    },
+    "civil3d_get_profile_geometry_detail": lambda a: {
+        "alignment": a.get("alignment"), "profile": a.get("profile"),
+        "entities": [
+            {"kind": "tangent", "startStation": 0.0, "endStation": 200.0, "length": 200.0, "gradePct": 3.0},
+            {"kind": "parabola-symmetric", "curveType": "Crest", "startStation": 200.0, "endStation": 280.0,
+             "length": 80.0, "kValue": 13.3},
+            {"kind": "tangent", "startStation": 280.0, "endStation": 600.0, "length": 320.0, "gradePct": -9.5},
+            {"kind": "tangent", "startStation": 600.0, "endStation": 900.0, "length": 300.0, "gradePct": -0.2},
+        ],
+        "pvis": [
+            {"station": 0.0, "gradeChangePct": 0, "type": "Tangent"},
+            {"station": 240.0, "gradeChangePct": -12.5, "type": "ParabolaSymmetric"},
+            {"station": 600.0, "gradeChangePct": 9.3, "type": "Tangent"},
+            {"station": 900.0, "gradeChangePct": 0, "type": "Tangent"},
+        ],
+    },
 }
 
 
@@ -249,6 +277,8 @@ async def health(_request: web.Request) -> web.Response:
     return web.json_response({
         "ok": True,
         "version": VERSION,
+        "release": 2027, "acadVersion": "26.0", "runtime": ".NET 10.0 (mock)", "pid": 0, "port": 7800,
+        "busy": False, "documents": {"active": "MOCK.dwg", "count": 1, "open": [{"name": "MOCK.dwg", "active": True}]},
         "toolCount": len(HANDLERS),
         "tools": sorted(HANDLERS.keys()),
         "mock": True,

@@ -36,7 +36,7 @@ def as_json(payload: Any) -> str:
     return json.dumps(payload, indent=2, default=str)
 
 
-async def call(tool_name: str, args: dict[str, Any] | None = None) -> str:
+async def call(tool_name: str, args: dict[str, Any] | None = None, *, timeout_s: float | None = None) -> str:
     """Invoke a Civil 3D tool through the bridge, returning JSON.
 
     Imported lazily to avoid circular import (bridge.py imports nothing
@@ -45,7 +45,7 @@ async def call(tool_name: str, args: dict[str, Any] | None = None) -> str:
     """
     from civil3d_mcp.bridge import BridgeError, invoke
     try:
-        result = await invoke(tool_name, args)
+        result = await invoke(tool_name, args, timeout_s=timeout_s)
         return as_json(result)
     except BridgeError as exc:
         return as_json({"error": str(exc), "tool": tool_name})

@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Per-release intermediate folders. Civil 3D 2025/2026 (.NET 8) and 2027 (.NET 10)
+    are binary-incompatible, so each release gets its own obj\ and bin\ tree.
+    Must live here (not in the .csproj) because BaseIntermediateOutputPath has to be
+    set before Microsoft.NET.Sdk is imported.
+  -->
+  <PropertyGroup>
+    <C3DVersion Condition="'$(C3DVersion)' == ''">2027</C3DVersion>
+    <BaseIntermediateOutputPath>obj\$(C3DVersion)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

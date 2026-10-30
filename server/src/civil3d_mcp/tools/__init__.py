@@ -8,6 +8,8 @@ from civil3d_mcp.tools import (  # noqa: F401
     alignments,
     blocks,
     corridors,
+    design,
+    drafting,
     drawing,
     junctions,
     markings,
@@ -20,5 +22,6 @@ from civil3d_mcp.tools import (  # noqa: F401
     roundabouts,
     sampling,
     surfaces,
+    terrain,
     tracking,
 )

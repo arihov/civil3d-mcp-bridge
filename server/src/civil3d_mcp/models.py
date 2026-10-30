@@ -491,3 +491,336 @@ class QuantityReport(_Strict):
     base: str = Field(..., min_length=1, max_length=200)
     comparison: str = Field(..., min_length=1, max_length=200)
     format: Literal["json", "markdown"] = "markdown"
+
+
+# ═══ v0.4.0 additions ══════════════════════════════════════════════════════
+
+Name = Field(..., min_length=1, max_length=200)
+XY = list[float]
+
+
+# ─── Sessions / documents ─────────────────────────────────────────────────
+
+class SelectInstance(_Strict):
+    release: Optional[int] = Field(default=None, ge=2020, le=2040, description="Civil 3D year, e.g. 2027")
+    pid: Optional[int] = Field(default=None, ge=1)
+    port: Optional[int] = Field(default=None, ge=1025, le=65535)
+    url: Optional[str] = Field(default=None, description="Explicit bridge URL, e.g. http://127.0.0.1:7827")
+    clear: bool = Field(default=False, description="Drop the pin and return to automatic selection")
+
+
+class SelectDocument(_Strict):
+    document: Optional[str] = Field(default=None, max_length=400, description="File name or full path; omit for the active drawing")
+
+
+class ActivateDocument(_Strict):
+    document: str = Field(..., min_length=1, max_length=400)
+
+
+class UndoSteps(_Strict):
+    steps: int = Field(default=1, ge=1, le=50)
+
+
+# ─── Alignment / profile design ───────────────────────────────────────────
+
+class AlignmentOnly(_Strict):
+    alignment: str = Name
+
+
+class AlignmentByPis(_Strict):
+    name: str = Name
+    pis: list[XY] = Field(..., min_length=2, description="[[x, y], ...] PI coordinates in order")
+    radii: list[float] = Field(default_factory=list, description="One radius per interior PI (n-2 values); 0 = angle point")
+    spiral_lengths: list[float] = Field(default_factory=list, description="Optional symmetric clothoid length per interior PI")
+    site: Optional[str] = None
+    style: Optional[str] = None
+    label_set: Optional[str] = None
+    layer: Optional[str] = Field(default="C-ROAD-ALIGN")
+
+
+class StationEquation(_Strict):
+    alignment: str = Name
+    raw_station_back: float
+    station_ahead: float
+    decreasing: bool = False
+
+
+class ProfileRef(_Strict):
+    alignment: str = Name
+    profile: str = Name
+
+
+class ProfileByPvis(_Strict):
+    alignment: str = Name
+    name: str = Name
+    pvis: list[XY] = Field(..., min_length=2, description="[[station, elevation], ...]")
+    curve_lengths: list[float] = Field(default_factory=list, description="Vertical curve length per interior PVI (n-2 values); 0 = none")
+    style: Optional[str] = None
+    label_set: Optional[str] = None
+    layer: Optional[str] = Field(default="C-ROAD-PROF")
+
+
+class DeletePvi(_Strict):
+    alignment: str = Name
+    profile: str = Name
+    station: float
+    tolerance: float = Field(default=0.5, gt=0)
+
+
+class SampleProfile(_Strict):
+    alignment: str = Name
+    profile: str = Name
+    interval: float = Field(default=20.0, gt=0)
+    start_station: Optional[float] = None
+    end_station: Optional[float] = None
+    csv_path: Optional[str] = None
+
+
+class AlignmentDesignCheck(_Strict):
+    alignment: str = Name
+    design_speed_kph: float = Field(..., gt=0, le=140)
+    e_max_pct: float = Field(default=8.0, gt=0, le=12, description="Maximum superelevation rate, %")
+    min_tangent_m: float = Field(default=0.0, ge=0, description="Flag tangents shorter than this between reverse curves")
+
+
+class ProfileDesignCheck(_Strict):
+    alignment: str = Name
+    profile: str = Name
+    design_speed_kph: float = Field(..., gt=0, le=140)
+    max_grade_pct: float = Field(default=8.0, gt=0, le=20, description="Project maximum grade, % (from the design criteria)")
+    min_grade_pct: float = Field(default=0.5, ge=0, le=5, description="Minimum grade for drainage in cut / kerbed sections, %")
+
+
+# ─── Feature lines ────────────────────────────────────────────────────────
+
+class FeatureLineRef(_Strict):
+    name: Optional[str] = None
+    handle: Optional[str] = None
+
+
+class CreateFeatureLine(_Strict):
+    name: Optional[str] = None
+    polyline_handle: Optional[str] = None
+    points: Optional[list[list[float]]] = Field(default=None, description="[[x, y, z], ...] when no polyline_handle")
+    site: Optional[str] = None
+    layer: Optional[str] = None
+
+
+class FeatureLineFromSurface(_Strict):
+    name: Optional[str] = None
+    handle: Optional[str] = None
+    surface: str = Name
+    insert_grade_breaks: bool = True
+
+
+class FeatureLinePoints(_Strict):
+    name: Optional[str] = None
+    handle: Optional[str] = None
+    csv_path: Optional[str] = None
+
+
+# ─── Earthworks / surfaces / sections ────────────────────────────────────
+
+class EarthworkBySections(_Strict):
+    alignment: str = Name
+    existing_surface: str = Name
+    design_surface: str = Name
+    interval: float = Field(default=20.0, gt=0)
+    left_width: float = Field(default=20.0, ge=0)
+    right_width: float = Field(default=20.0, ge=0)
+    sample_step: float = Field(default=0.5, gt=0)
+    start_station: Optional[float] = None
+    end_station: Optional[float] = None
+    stations: Optional[list[float]] = None
+    fill_factor: float = Field(default=1.0, gt=0, le=2, description="Applied to fill in the mass-haul ordinate (shrinkage/bulking)")
+    strip_depth: float = Field(default=0.0, ge=0, le=2, description="Topsoil strip depth over the design footprint, m")
+    csv_path: Optional[str] = None
+
+
+class SurfaceOnly(_Strict):
+    surface: str = Name
+
+
+class SurfaceSlopes(_Strict):
+    surface: str = Name
+    bands_pct: Optional[list[float]] = None
+    elevation_interval: float = Field(default=0.0, ge=0)
+
+
+class SurfaceTransect(_Strict):
+    surface: str = Name
+    start: Optional[XY] = None
+    end: Optional[XY] = None
+    points: Optional[list[XY]] = None
+    step: float = Field(default=1.0, gt=0)
+
+
+class SurfaceBoundary(_Strict):
+    surface: str = Name
+    polyline_handle: str = Field(..., min_length=1, max_length=32)
+    type: Literal["outer", "hide", "show", "data_clip"] = "outer"
+    mid_ordinate: float = Field(default=0.1, gt=0)
+    non_destructive: bool = True
+
+
+class ExtractContours(_Strict):
+    surface: str = Name
+    interval: float = Field(default=1.0, gt=0)
+    layer: Optional[str] = None
+
+
+class SampleLineGroupRef(_Strict):
+    alignment: str = Name
+    group: str = Name
+
+
+class ExportSections(_Strict):
+    alignment: str = Name
+    group: str = Name
+    sources: Optional[list[str]] = None
+    csv_path: Optional[str] = None
+
+
+class CreateSectionViews(_Strict):
+    alignment: str = Name
+    group: str = Name
+    origin: XY
+    columns: int = Field(default=5, ge=1, le=50)
+    spacing_x: float = Field(default=60.0, gt=0)
+    spacing_y: float = Field(default=40.0, gt=0)
+    start_station: Optional[float] = None
+    end_station: Optional[float] = None
+    max_views: int = Field(default=200, ge=1, le=2000)
+
+
+# ─── Corridor surfaces ────────────────────────────────────────────────────
+
+class CorridorOnly(_Strict):
+    corridor: str = Name
+
+
+class CreateCorridorSurface(_Strict):
+    corridor: str = Name
+    name: str = Name
+    link_codes: list[str] = Field(default_factory=lambda: ["Top"])
+    feature_line_codes: list[str] = Field(default_factory=list)
+    overhang: Literal["none", "top", "bottom"] = "none"
+    add_extents_boundary: bool = True
+    rebuild: bool = True
+
+
+# ─── Styles / geometry / parcels / pressure ──────────────────────────────
+
+class ListStyles(_Strict):
+    collection: Optional[str] = Field(default=None, description="e.g. alignment, profile, surface, profile_view, section_view, point, corridor; omit for all")
+
+
+class SetObjectStyle(_Strict):
+    object_type: str = Field(..., description="alignment | profile | surface | corridor | <collection> with handle")
+    style: str = Name
+    name: Optional[str] = None
+    alignment: Optional[str] = None
+    handle: Optional[str] = None
+
+
+class CreatePolyline(_Strict):
+    points: list[XY] = Field(..., min_length=2)
+    closed: bool = False
+    elevation: float = 0.0
+    layer: Optional[str] = None
+
+
+class Create3dPolyline(_Strict):
+    points: list[list[float]] = Field(..., min_length=2, description="[[x, y, z], ...]")
+    closed: bool = False
+    layer: Optional[str] = None
+
+
+class CreateText(_Strict):
+    text: str = Field(..., min_length=1, max_length=2000)
+    x: float
+    y: float
+    height: float = Field(default=2.5, gt=0)
+    rotation_deg: float = 0.0
+    layer: Optional[str] = None
+    mtext: bool = False
+    width: float = Field(default=0.0, ge=0)
+
+
+class MeasurePolylines(_Strict):
+    layers: Optional[list[str]] = Field(default=None, description="Layer wildcards, e.g. ['C-KERB*', 'C-DRAIN*']")
+    closed_only: bool = False
+    include_items: bool = False
+
+
+class HandleRef(_Strict):
+    handle: str = Field(..., min_length=1, max_length=32)
+
+
+class EraseEntities(_Strict):
+    handles: list[str] = Field(..., min_length=1, max_length=5000)
+
+
+class CsvOnly(_Strict):
+    csv_path: Optional[str] = None
+
+
+class PressureNetworkRef(_Strict):
+    network: str = Name
+    csv_path: Optional[str] = None
+
+
+# ─── Engineering calculators (pure Python) ───────────────────────────────
+
+class SpeedInput(_Strict):
+    design_speed_kph: float = Field(..., gt=0, le=140)
+    grade_pct: float = Field(default=0.0, ge=-12, le=12, description="Approach grade for SSD (negative = downgrade)")
+    reaction_time_s: float = Field(default=2.5, gt=0, le=5)
+    e_max_pct: float = Field(default=8.0, gt=0, le=12)
+
+
+class CogoInverse(_Strict):
+    from_xy: XY
+    to_xy: XY
+
+
+class CogoForward(_Strict):
+    from_xy: XY
+    bearing_deg: float = Field(..., description="Whole-circle bearing from grid north, clockwise")
+    distance: float = Field(..., gt=0)
+
+
+class CurveSolve(_Strict):
+    radius: float = Field(..., gt=0)
+    deflection_deg: float = Field(..., gt=0, lt=360)
+    pi_station: Optional[float] = None
+
+
+class TraverseLeg(_Strict):
+    bearing_deg: float
+    distance: float = Field(..., gt=0)
+
+
+class Traverse(_Strict):
+    start_xy: XY
+    legs: list[TraverseLeg] = Field(..., min_length=2)
+    close_xy: Optional[XY] = Field(default=None, description="Known closing coordinate; omit for a loop back to start")
+
+
+class SuperelevationRunoff(_Strict):
+    design_speed_kph: float = Field(..., gt=0, le=130)
+    e_design_pct: float = Field(..., gt=0, le=12)
+    lane_width_m: float = Field(default=3.5, gt=0)
+    lanes_rotated: float = Field(default=1.0, gt=0, le=3.5, description="n1, lanes rotated each side of the axis")
+    normal_crossfall_pct: float = Field(default=2.5, gt=0, le=5)
+
+
+class EndAreaRow(_Strict):
+    station: float
+    cut_area: float = Field(..., ge=0)
+    fill_area: float = Field(..., ge=0)
+
+
+class EndAreaTable(_Strict):
+    rows: list[EndAreaRow] = Field(..., min_length=2)
+    fill_factor: float = Field(default=1.0, gt=0, le=2)
