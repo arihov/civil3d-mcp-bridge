@@ -241,7 +241,8 @@ foreach ($cfg in $cfgPaths) {
     New-Item -ItemType Directory -Force -Path (Split-Path $cfg) | Out-Null
     if (Test-Path $cfg) {
         Copy-Item $cfg "$cfg.bak-$(Get-Date -Format yyyyMMddHHmmss)"
-        $json = Get-Content $cfg -Raw | ConvertFrom-Json
+        $raw = [IO.File]::ReadAllText($cfg).TrimStart([char]0xFEFF)
+        $json = if ($raw.Trim()) { $raw | ConvertFrom-Json } else { [pscustomobject]@{} }
     } else { $json = [pscustomobject]@{} }
     if (-not ($json.PSObject.Properties.Name -contains "mcpServers")) {
         $json | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{})
@@ -249,7 +250,9 @@ foreach ($cfg in $cfgPaths) {
     $entry = [pscustomobject]@{ command = $exe; args = @(); env = [pscustomobject]@{ CIVIL3D_TIMEOUT_S = "300" } }
     if ($json.mcpServers.PSObject.Properties.Name -contains "civil3d") { $json.mcpServers.PSObject.Properties.Remove("civil3d") }
     $json.mcpServers | Add-Member -NotePropertyName civil3d -NotePropertyValue $entry
-    $json | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 $cfg
+    # UTF-8 *without* BOM: Windows PowerShell 5.1 "-Encoding UTF8" writes a BOM,
+    # which makes Claude Desktop ignore the whole config file.
+    [IO.File]::WriteAllText($cfg, ($json | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding $false))
     Ok "updated $cfg (backup saved)"
 }
 

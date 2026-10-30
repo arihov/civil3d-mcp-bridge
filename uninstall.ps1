@@ -18,10 +18,12 @@ foreach ($cfg in @(
     (Join-Path $env:LOCALAPPDATA "Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json"))) {
     if (-not (Test-Path $cfg)) { continue }
     Copy-Item $cfg "$cfg.bak-$(Get-Date -Format yyyyMMddHHmmss)"
-    $json = Get-Content $cfg -Raw | ConvertFrom-Json
+    $json = [IO.File]::ReadAllText($cfg).TrimStart([char]0xFEFF) | ConvertFrom-Json
     if ($json.mcpServers -and ($json.mcpServers.PSObject.Properties.Name -contains "civil3d")) {
         $json.mcpServers.PSObject.Properties.Remove("civil3d")
-        $json | ConvertTo-Json -Depth 20 | Set-Content -Encoding UTF8 $cfg
+        # UTF-8 *without* BOM: Windows PowerShell 5.1 "-Encoding UTF8" writes a BOM,
+    # which makes Claude Desktop ignore the whole config file.
+    [IO.File]::WriteAllText($cfg, ($json | ConvertTo-Json -Depth 20), (New-Object Text.UTF8Encoding $false))
         Write-Host "[OK] removed civil3d from $cfg" -ForegroundColor Green
     }
 }
