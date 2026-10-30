@@ -6,7 +6,7 @@
 |---|---|---|
 | Civil 3D 2025, 2026 and/or 2027 | the add-in | x64 build; also runs under Windows on ARM x64 emulation |
 | .NET 10 SDK | compiling (optional) | `winget install Microsoft.DotNet.SDK.10`. Builds the .NET 8 (2025/2026) and .NET 10 (2027) DLLs. Without it the installer deploys `dist\Civil3DMcpBridge-0.4.0.bundle.zip`. Visual Studio is not required. |
-| Python 3.11+ | the MCP server | `winget install Python.Python.3.12` |
+| Python 3.11-3.14 | the MCP server | Installed automatically (3.12) if missing. On Windows on ARM an **x64** Python is used, because `cryptography` (needed by `mcp`) ships no win_arm64 wheels. Python 3.15+ is skipped (no prebuilt wheels yet). |
 | Claude Desktop | the MCP client | any MCP client works with `civil3d-mcp` over stdio |
 
 ## One-shot install
@@ -80,6 +80,7 @@ Claude config entry:
 | "preferred port busy" | Another session or app holds the port; the bridge used 7840+. Discovery handles it. |
 | Calls time out with "busy" | A command, dialog or grip edit is active. Press Esc in Civil 3D and retry. |
 | Copy fails during install | Civil 3D still running (DLL locked). Close all windows. |
+| `Building wheel for cryptography ... link.exe not found` | Python too new or ARM64 build. Rerun `install.ps1`; it now picks or installs x64 Python 3.12 and rebuilds the venv. |
 | `ModuleNotFoundError: mcp.server.fastmcp` | An `mcp` 2.x package was installed outside the venv. Use the venv executable; the package pins `mcp<2`. |
 | 2026 build errors after the Aug-2026 update | Its assemblies now need .NET 10 to compile: `install.ps1 -Net10For2026`. |
 

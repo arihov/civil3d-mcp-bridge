@@ -155,25 +155,75 @@ if ($SkipPython) { Warn "Python steps skipped (-SkipPython)"; exit 0 }
 # ---------------------------------------------------------------------------
 Step "4/6 Python environment"
 # ---------------------------------------------------------------------------
-$py = $null
-$cands = @()
-if ($PythonExe) { $cands += ,@($PythonExe) } else { $cands += ,@("py", "-3"); $cands += ,@("python") }
-foreach ($c in $cands) {
-    try {
-        $v = & $c[0] @($c | Select-Object -Skip 1) -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null
-        if ($v -and [version]$v -ge [version]"3.11") { $py = $c; Ok "Python $v ($($c -join ' '))"; break }
-    } catch { }
+# Pick an interpreter that has prebuilt wheels for every dependency.
+# - Prefer 3.12 / 3.13 / 3.11 / 3.14 (newest releases can lack wheels and force
+#   Rust/MSVC source builds, e.g. cryptography on 3.15).
+# - On Windows on ARM (e.g. Parallels on Apple silicon) use an x64 Python: it runs
+#   under emulation and cryptography (pulled in by mcp) ships no win_arm64 wheels.
+$hostArm = ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") -or ($env:PROCESSOR_ARCHITEW6432 -eq "ARM64")
+$probe = "import sys,sysconfig;print('%d.%d|%s' % (sys.version_info[0], sys.version_info[1], sysconfig.get_platform()))"
+$wantPlat = if ($hostArm) { "win-amd64" } else { "" }
+$okVers = @("3.12", "3.13", "3.11", "3.14")
+
+function Get-PyCandidates {
+    $list = @()
+    if ($PythonExe) { return ,@(,@($PythonExe)) }
+    foreach ($v in $okVers) {
+        $n = $v.Replace(".", "")
+        $list += ,@("$env:LOCALAPPDATA\Programs\Python\Python$n\python.exe")
+        $list += ,@("C:\Program Files\Python$n\python.exe")
+        $list += ,@("py", "-V:$v")
+        $list += ,@("py", "-$v")
+    }
+    $list += ,@("py", "-3"); $list += ,@("python")
+    return ,$list
 }
-if (-not $py) { Fail "Python 3.11+ not found. Install with: winget install Python.Python.3.12" }
+
+function Find-Python {
+    foreach ($c in (Get-PyCandidates)) {
+        try {
+            if ($c.Count -eq 1 -and $c[0] -like "*\*" -and -not (Test-Path $c[0])) { continue }
+            $out = & $c[0] @($c | Select-Object -Skip 1) -c $probe 2>$null
+            if (-not $out) { continue }
+            $ver, $plat = "$out".Trim().Split("|")
+            if ([version]$ver -lt [version]"3.11") { continue }
+            if (-not $PythonExe -and $okVers -notcontains $ver) { Warn "skipping Python $ver ($plat): too new for prebuilt wheels"; continue }
+            if ($wantPlat -and $plat -ne $wantPlat -and -not $PythonExe) { Warn "skipping Python $ver ($plat): need x64 Python on Windows on ARM"; continue }
+            return [pscustomobject]@{ Cmd = $c; Ver = $ver; Plat = $plat }
+        } catch { }
+    }
+    return $null
+}
+
+$pyInfo = Find-Python
+if (-not $pyInfo) {
+    $arch = if ($hostArm) { "x64" } else { "" }
+    Warn "No suitable Python found. Installing Python 3.12 $arch with winget..."
+    $wargs = @("install", "--id", "Python.Python.3.12", "-e", "--silent", "--accept-package-agreements", "--accept-source-agreements", "--scope", "user")
+    if ($hostArm) { $wargs += @("--architecture", "x64") }
+    & winget @wargs
+    $pyInfo = Find-Python
+}
+if (-not $pyInfo) { Fail "Could not find or install a suitable Python. Install Python 3.12 (x64 on ARM PCs) from python.org and rerun with -PythonExe <path>." }
+$py = $pyInfo.Cmd
+Ok "Python $($pyInfo.Ver) $($pyInfo.Plat) ($($py -join ' '))"
 
 $venv = Join-Path $env:LOCALAPPDATA "Civil3DMcpBridge\venv"
-if (-not (Test-Path (Join-Path $venv "Scripts\python.exe"))) {
+$vpyOld = Join-Path $venv "Scripts\python.exe"
+if (Test-Path $vpyOld) {
+    $cur = & $vpyOld -c $probe 2>$null
+    if ("$cur".Trim() -ne "$($pyInfo.Ver)|$($pyInfo.Plat)") {
+        Warn "existing venv uses $cur; recreating with $($pyInfo.Ver) $($pyInfo.Plat)"
+        Remove-Item -Recurse -Force $venv
+    }
+}
+if (-not (Test-Path $vpyOld)) {
     & $py[0] @($py | Select-Object -Skip 1) -m venv $venv
     if ($LASTEXITCODE -ne 0) { Fail "venv creation failed" }
 }
 $vpy = Join-Path $venv "Scripts\python.exe"
 & $vpy -m pip install --upgrade pip -q
-& $vpy -m pip install -q -e (Join-Path $root "server")
+& $vpy -m pip install -q --prefer-binary -e (Join-Path $root "server")
 if ($LASTEXITCODE -ne 0) { Fail "pip install failed" }
 $exe = Join-Path $venv "Scripts\civil3d-mcp.exe"
 Ok "MCP server installed: $exe"

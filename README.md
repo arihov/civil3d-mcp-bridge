@@ -12,6 +12,7 @@ Built by **[AfroBIM Studios](https://afrobim.com)**, led by **Venture Kubariho**
 [![.NET](https://img.shields.io/badge/.NET-8%20%26%2010-512BD4?logo=dotnet&logoColor=white)](plugin/)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](server/)
 [![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-128%20tools-111111)](docs/TOOLS.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/arihov/civil3d-mcp-bridge?style=social)](https://github.com/arihov/civil3d-mcp-bridge/stargazers)
 
 **⭐ If this saves you even one hour of clicking, [star the repo](https://github.com/arihov/civil3d-mcp-bridge). It helps other civil engineers find it.**
@@ -36,7 +37,7 @@ Civil engineers spend too many hours on repetitive Civil 3D work: placing hundre
 >
 > *"Place a culvert at chainage 12+450 with a 900 mm pipe, 14 m long, skewed 15°."*
 
-It was built by a working highway engineer for real road projects in East Africa, and it's free for every civil engineer to use.
+It was built by a working highway engineer for real road projects in East Africa, and it's free and open source under the MIT licence: use it on your projects, adapt it and share it.
 
 ---
 
@@ -59,7 +60,7 @@ Full tool reference: **[docs/TOOLS.md](docs/TOOLS.md)** · What's new: **[CHANGE
 
 ## 🚀 Install in 5 minutes
 
-**You need:** Windows, Civil 3D 2025/2026/2027, Python 3.11+ (`winget install Python.Python.3.12`) and [Claude Desktop](https://claude.ai/download) or another MCP client. Git is optional. Windows on ARM (for example under Parallels) works too.
+**You need:** Windows, Civil 3D 2025/2026/2027, Python 3.11-3.14 (the installer fetches Python 3.12 for you if needed) and [Claude Desktop](https://claude.ai/download) or another MCP client. Git is optional. Windows on ARM (for example Parallels on a Mac) works too; the installer uses x64 Python there, because some dependencies have no ARM64 builds.
 
 Close Civil 3D, open **PowerShell**, and paste:
 
@@ -116,6 +117,8 @@ This is a productivity tool, not a substitute for engineering judgement. The des
 Created and maintained by **[AfroBIM Studios](https://afrobim.com)**, a digital engineering studio, led by **Venture Kubariho** (Highway Design Engineer, PMP), Kampala, Uganda.
 
 Ideas and Civil 3D 2027 build notes were informed by the open-source community, including [JhulVF/Civil3d-mcp-tcce](https://github.com/JhulVF/Civil3d-mcp-tcce), [Joshua8-AI/Civil3D-mcp](https://github.com/Joshua8-AI/Civil3D-mcp), [amirclyde/Civil3D-mcp](https://github.com/amirclyde/Civil3D-mcp) and [antonhofstader/Civil3D-mcp-python-COM](https://github.com/antonhofstader/Civil3D-mcp-python-COM). No code was copied; features were re-implemented for this architecture.
+
+Released under the [MIT License](LICENSE) © 2026 Venture Kubariho, AfroBIM Studios.
 
 *Autodesk and Civil 3D are trademarks of Autodesk, Inc. This project is independent and not affiliated with or endorsed by Autodesk.*
 
