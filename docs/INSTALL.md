@@ -28,7 +28,7 @@ What it writes:
 | `%APPDATA%\Autodesk\ApplicationPlugins\Civil3DMcpBridge.bundle\` | `PackageContents.xml` + `Contents\<year>\Civil3DMcpBridge.dll` |
 | `%LOCALAPPDATA%\Civil3DMcpBridge\venv\` | private Python environment with `civil3d-mcp.exe` |
 | `%LOCALAPPDATA%\Civil3DMcpBridge\instances\` | one JSON per running Civil 3D session (written by the add-in) |
-| `%APPDATA%\Claude\claude_desktop_config.json` | `mcpServers.civil3d` entry (timestamped backup alongside) |
+| Claude config: `%LOCALAPPDATA%\Claude-Data\<id>\claude_desktop_config.json` (current app), plus the Store and classic `%APPDATA%\Claude` copies if present | `mcpServers.civil3d` entry (timestamped backup alongside; written UTF-8 without BOM) |
 
 ## Verify
 

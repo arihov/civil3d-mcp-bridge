@@ -231,11 +231,17 @@ Ok "MCP server installed: $exe"
 # ---------------------------------------------------------------------------
 Step "5/6 Registering with Claude Desktop"
 # ---------------------------------------------------------------------------
-$cfgPaths = @(
-    (Join-Path $env:APPDATA "Claude\claude_desktop_config.json"),
-    (Join-Path $env:LOCALAPPDATA "Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json")
-) | Where-Object { Test-Path (Split-Path $_) }
-if (-not $cfgPaths) { $cfgPaths = @(Join-Path $env:APPDATA "Claude\claude_desktop_config.json") }
+# Claude Desktop keeps its config in different places by version:
+#   newer builds : %LOCALAPPDATA%\Claude-Data\<package-id>\claude_desktop_config.json
+#   Store/MSIX   : %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\...
+#   classic      : %APPDATA%\Claude\claude_desktop_config.json
+# Update every one that exists (all are rewritten in place, other keys preserved).
+$cfgPaths = @()
+$cfgPaths += Get-ChildItem (Join-Path $env:LOCALAPPDATA "Claude-Data\*\claude_desktop_config.json") -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+$cfgPaths += Get-ChildItem (Join-Path $env:LOCALAPPDATA "Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json") -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+$classic = Join-Path $env:APPDATA "Claude\claude_desktop_config.json"
+if ((Test-Path $classic) -or -not $cfgPaths) { $cfgPaths += $classic }
+$cfgPaths = $cfgPaths | Select-Object -Unique
 
 foreach ($cfg in $cfgPaths) {
     New-Item -ItemType Directory -Force -Path (Split-Path $cfg) | Out-Null

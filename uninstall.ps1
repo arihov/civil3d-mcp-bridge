@@ -13,9 +13,9 @@ if (Test-Path $bundle) { Remove-Item -Recurse -Force $bundle; Write-Host "[OK] r
 $state = Join-Path $env:LOCALAPPDATA "Civil3DMcpBridge"
 if ((Test-Path $state) -and -not $KeepPython) { Remove-Item -Recurse -Force $state; Write-Host "[OK] removed $state" -ForegroundColor Green }
 
-foreach ($cfg in @(
-    (Join-Path $env:APPDATA "Claude\claude_desktop_config.json"),
-    (Join-Path $env:LOCALAPPDATA "Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json"))) {
+$cfgs = @(Join-Path $env:APPDATA "Claude\claude_desktop_config.json")
+$cfgs += Get-ChildItem (Join-Path $env:LOCALAPPDATA "Claude-Data\*\claude_desktop_config.json"), (Join-Path $env:LOCALAPPDATA "Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json") -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+foreach ($cfg in $cfgs) {
     if (-not (Test-Path $cfg)) { continue }
     Copy-Item $cfg "$cfg.bak-$(Get-Date -Format yyyyMMddHHmmss)"
     $json = [IO.File]::ReadAllText($cfg).TrimStart([char]0xFEFF) | ConvertFrom-Json
