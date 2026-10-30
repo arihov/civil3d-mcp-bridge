@@ -9,7 +9,7 @@ description = "MCP server bridging Claude to Autodesk Civil 3D via an in-process
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "SANS LIMITE Consults Ltd" }]
+authors = [{ name = "Venture Kubariho, AfroBIM Studios" }]
 dependencies = [
     "mcp>=1.10,<2",  # mcp 2.x renamed FastMCP to MCPServer; pin until migrated
     "httpx>=0.27.0",

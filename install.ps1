@@ -140,9 +140,9 @@ $comp = ($built | Sort-Object | ForEach-Object {
 <?xml version="1.0" encoding="utf-8"?>
 <ApplicationPackage SchemaVersion="1.0" AutodeskProduct="AutoCAD" ProductType="Application"
                     Name="Civil3DMcpBridge" Description="Bridges Claude (MCP) to Civil 3D over local HTTP"
-                    AppVersion="$Version" Author="AfroBIM / DTM Engineering Co. Ltd"
+                    AppVersion="$Version" Author="AfroBIM Studios (Venture Kubariho)"
                     ProductCode="{C3DA0000-0000-0000-0000-000000000001}" UpgradeCode="{C3DA0000-0000-0000-0000-000000000002}">
-  <CompanyDetails Name="AfroBIM" Url="https://afrobim.com" />
+  <CompanyDetails Name="AfroBIM Studios" Url="https://afrobim.com" />
 $comp
 </ApplicationPackage>
 "@ | Set-Content -Encoding UTF8 (Join-Path $bundle "PackageContents.xml")

@@ -11,10 +11,10 @@
                     Name="Civil3DMcpBridge"
                     Description="Bridges Claude (MCP) to Civil 3D over local HTTP"
                     AppVersion="0.4.0"
-                    Author="AfroBIM / DTM Engineering Co. Ltd"
+                    Author="AfroBIM Studios (Venture Kubariho)"
                     ProductCode="{C3DA0000-0000-0000-0000-000000000001}"
                     UpgradeCode="{C3DA0000-0000-0000-0000-000000000002}">
-  <CompanyDetails Name="AfroBIM" Url="https://afrobim.com" />
+  <CompanyDetails Name="AfroBIM Studios" Url="https://afrobim.com" />
 
   <Components Description="Civil 3D 2025">
     <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" SeriesMax="R25.0" />
