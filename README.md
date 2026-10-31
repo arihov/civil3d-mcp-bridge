@@ -11,7 +11,7 @@ Built by **[AfroBIM Studios](https://afrobim.com)**, led by **Venture Kubariho**
 [![Civil 3D](https://img.shields.io/badge/Civil%203D-2025%20%7C%202026%20%7C%202027-0696D7?logo=autodesk&logoColor=white)](#-install-in-5-minutes)
 [![.NET](https://img.shields.io/badge/.NET-8%20%26%2010-512BD4?logo=dotnet&logoColor=white)](plugin/)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](server/)
-[![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-128%20tools-111111)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/Civil%203D%20tools-110-111111)](docs/TOOLS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/arihov/civil3d-mcp-bridge?style=social)](https://github.com/arihov/civil3d-mcp-bridge/stargazers)
 
@@ -45,7 +45,7 @@ It was built by a working highway engineer for real road projects in East Africa
 
 | | |
 |---|---|
-| 🧭 **128 tools** | Alignments, profiles, corridors, surfaces, earthworks, sections, feature lines, points, gravity and pressure pipes, styles, layers, blocks, markings, parcels and reports |
+| 🧭 **110 Civil 3D tools** | Alignments, profiles, corridors, surfaces, earthworks, sections, feature lines, points, gravity and pressure pipes, styles, layers, blocks, markings, parcels and reports. The MCP server adds 18 more for design checks, calculators and reports (128 in total) |
 | ✅ **Design checks** | Minimum radius, crest and sag K values, maximum and minimum grade, broken-back curves and grade breaks without a vertical curve (AASHTO 2018 metric; the inputs follow your project criteria) |
 | 🚜 **Earthworks** | Average-end-area cut and fill with mass-haul ordinates, read directly from two surfaces. No sample-line setup needed. Gives an independent check on QTO |
 | 📐 **Engineer's calculators** | Stopping sight distance, K values and R<sub>min</sub>; COGO inverse and forward; curve solution; Bowditch traverse; superelevation runoff. These run without Civil 3D |
